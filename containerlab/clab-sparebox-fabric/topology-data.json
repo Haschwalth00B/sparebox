@@ -1,0 +1,491 @@
+{
+  "name": "sparebox-fabric",
+  "type": "clab",
+  "clab": {
+    "config": {
+      "prefix": "clab",
+      "mgmt": {
+        "network": "clab",
+        "bridge": "br-9ab4a7145d09",
+        "ipv4-subnet": "172.20.20.0/24",
+        "ipv4-gw": "172.20.20.1",
+        "ipv6-subnet": "3fff:172:20:20::/64",
+        "ipv6-gw": "3fff:172:20:20::1",
+        "external-access": true
+      }
+    }
+  },
+  "ssh-pub-keys": [],
+  "nodes": {
+    "ipsec-r1-1": {
+      "index": "0",
+      "shortname": "ipsec-r1-1",
+      "longname": "clab-sparebox-fabric-ipsec-r1-1",
+      "fqdn": "ipsec-r1-1.sparebox-fabric.io",
+      "group": "",
+      "labdir": "/root/sparebox/containerlab/clab-sparebox-fabric/ipsec-r1-1",
+      "kind": "linux",
+      "image": "local/strongswan:5.9",
+      "mgmt-net": "",
+      "mgmt-intf": "",
+      "mgmt-ipv4-address": "",
+      "mgmt-ipv4-prefix-length": 0,
+      "mgmt-ipv6-address": "",
+      "mgmt-ipv6-prefix-length": 0,
+      "mac-address": "",
+      "labels": {
+        "clab-mgmt-net-bridge": "br-9ab4a7145d09",
+        "clab-node-group": "",
+        "clab-node-kind": "linux",
+        "clab-node-lab-dir": "/root/sparebox/containerlab/clab-sparebox-fabric/ipsec-r1-1",
+        "clab-node-longname": "clab-sparebox-fabric-ipsec-r1-1",
+        "clab-node-name": "ipsec-r1-1",
+        "clab-node-type": "",
+        "clab-owner": "root",
+        "clab-topo-file": "/root/sparebox/containerlab/topology.clab.yml",
+        "containerlab": "sparebox-fabric"
+      },
+      "port-bindings": [
+      ]
+    },
+    "ipsec-r1-2": {
+      "index": "1",
+      "shortname": "ipsec-r1-2",
+      "longname": "clab-sparebox-fabric-ipsec-r1-2",
+      "fqdn": "ipsec-r1-2.sparebox-fabric.io",
+      "group": "",
+      "labdir": "/root/sparebox/containerlab/clab-sparebox-fabric/ipsec-r1-2",
+      "kind": "linux",
+      "image": "local/strongswan:5.9",
+      "mgmt-net": "",
+      "mgmt-intf": "",
+      "mgmt-ipv4-address": "",
+      "mgmt-ipv4-prefix-length": 0,
+      "mgmt-ipv6-address": "",
+      "mgmt-ipv6-prefix-length": 0,
+      "mac-address": "",
+      "labels": {
+        "clab-mgmt-net-bridge": "br-9ab4a7145d09",
+        "clab-node-group": "",
+        "clab-node-kind": "linux",
+        "clab-node-lab-dir": "/root/sparebox/containerlab/clab-sparebox-fabric/ipsec-r1-2",
+        "clab-node-longname": "clab-sparebox-fabric-ipsec-r1-2",
+        "clab-node-name": "ipsec-r1-2",
+        "clab-node-type": "",
+        "clab-owner": "root",
+        "clab-topo-file": "/root/sparebox/containerlab/topology.clab.yml",
+        "containerlab": "sparebox-fabric"
+      },
+      "port-bindings": [
+      ]
+    },
+    "ipsec-r2-1": {
+      "index": "2",
+      "shortname": "ipsec-r2-1",
+      "longname": "clab-sparebox-fabric-ipsec-r2-1",
+      "fqdn": "ipsec-r2-1.sparebox-fabric.io",
+      "group": "",
+      "labdir": "/root/sparebox/containerlab/clab-sparebox-fabric/ipsec-r2-1",
+      "kind": "linux",
+      "image": "local/strongswan:5.9",
+      "mgmt-net": "",
+      "mgmt-intf": "",
+      "mgmt-ipv4-address": "",
+      "mgmt-ipv4-prefix-length": 0,
+      "mgmt-ipv6-address": "",
+      "mgmt-ipv6-prefix-length": 0,
+      "mac-address": "",
+      "labels": {
+        "clab-mgmt-net-bridge": "br-9ab4a7145d09",
+        "clab-node-group": "",
+        "clab-node-kind": "linux",
+        "clab-node-lab-dir": "/root/sparebox/containerlab/clab-sparebox-fabric/ipsec-r2-1",
+        "clab-node-longname": "clab-sparebox-fabric-ipsec-r2-1",
+        "clab-node-name": "ipsec-r2-1",
+        "clab-node-type": "",
+        "clab-owner": "root",
+        "clab-topo-file": "/root/sparebox/containerlab/topology.clab.yml",
+        "containerlab": "sparebox-fabric"
+      },
+      "port-bindings": [
+      ]
+    },
+    "ipsec-r2-2": {
+      "index": "3",
+      "shortname": "ipsec-r2-2",
+      "longname": "clab-sparebox-fabric-ipsec-r2-2",
+      "fqdn": "ipsec-r2-2.sparebox-fabric.io",
+      "group": "",
+      "labdir": "/root/sparebox/containerlab/clab-sparebox-fabric/ipsec-r2-2",
+      "kind": "linux",
+      "image": "local/strongswan:5.9",
+      "mgmt-net": "",
+      "mgmt-intf": "",
+      "mgmt-ipv4-address": "",
+      "mgmt-ipv4-prefix-length": 0,
+      "mgmt-ipv6-address": "",
+      "mgmt-ipv6-prefix-length": 0,
+      "mac-address": "",
+      "labels": {
+        "clab-mgmt-net-bridge": "br-9ab4a7145d09",
+        "clab-node-group": "",
+        "clab-node-kind": "linux",
+        "clab-node-lab-dir": "/root/sparebox/containerlab/clab-sparebox-fabric/ipsec-r2-2",
+        "clab-node-longname": "clab-sparebox-fabric-ipsec-r2-2",
+        "clab-node-name": "ipsec-r2-2",
+        "clab-node-type": "",
+        "clab-owner": "root",
+        "clab-topo-file": "/root/sparebox/containerlab/topology.clab.yml",
+        "containerlab": "sparebox-fabric"
+      },
+      "port-bindings": [
+      ]
+    },
+    "ipsec-r3-1": {
+      "index": "4",
+      "shortname": "ipsec-r3-1",
+      "longname": "clab-sparebox-fabric-ipsec-r3-1",
+      "fqdn": "ipsec-r3-1.sparebox-fabric.io",
+      "group": "",
+      "labdir": "/root/sparebox/containerlab/clab-sparebox-fabric/ipsec-r3-1",
+      "kind": "linux",
+      "image": "local/strongswan:5.9",
+      "mgmt-net": "",
+      "mgmt-intf": "",
+      "mgmt-ipv4-address": "",
+      "mgmt-ipv4-prefix-length": 0,
+      "mgmt-ipv6-address": "",
+      "mgmt-ipv6-prefix-length": 0,
+      "mac-address": "",
+      "labels": {
+        "clab-mgmt-net-bridge": "br-9ab4a7145d09",
+        "clab-node-group": "",
+        "clab-node-kind": "linux",
+        "clab-node-lab-dir": "/root/sparebox/containerlab/clab-sparebox-fabric/ipsec-r3-1",
+        "clab-node-longname": "clab-sparebox-fabric-ipsec-r3-1",
+        "clab-node-name": "ipsec-r3-1",
+        "clab-node-type": "",
+        "clab-owner": "root",
+        "clab-topo-file": "/root/sparebox/containerlab/topology.clab.yml",
+        "containerlab": "sparebox-fabric"
+      },
+      "port-bindings": [
+      ]
+    },
+    "ipsec-r3-2": {
+      "index": "5",
+      "shortname": "ipsec-r3-2",
+      "longname": "clab-sparebox-fabric-ipsec-r3-2",
+      "fqdn": "ipsec-r3-2.sparebox-fabric.io",
+      "group": "",
+      "labdir": "/root/sparebox/containerlab/clab-sparebox-fabric/ipsec-r3-2",
+      "kind": "linux",
+      "image": "local/strongswan:5.9",
+      "mgmt-net": "",
+      "mgmt-intf": "",
+      "mgmt-ipv4-address": "",
+      "mgmt-ipv4-prefix-length": 0,
+      "mgmt-ipv6-address": "",
+      "mgmt-ipv6-prefix-length": 0,
+      "mac-address": "",
+      "labels": {
+        "clab-mgmt-net-bridge": "br-9ab4a7145d09",
+        "clab-node-group": "",
+        "clab-node-kind": "linux",
+        "clab-node-lab-dir": "/root/sparebox/containerlab/clab-sparebox-fabric/ipsec-r3-2",
+        "clab-node-longname": "clab-sparebox-fabric-ipsec-r3-2",
+        "clab-node-name": "ipsec-r3-2",
+        "clab-node-type": "",
+        "clab-owner": "root",
+        "clab-topo-file": "/root/sparebox/containerlab/topology.clab.yml",
+        "containerlab": "sparebox-fabric"
+      },
+      "port-bindings": [
+      ]
+    },
+    "r1-1": {
+      "index": "6",
+      "shortname": "r1-1",
+      "longname": "clab-sparebox-fabric-r1-1",
+      "fqdn": "r1-1.sparebox-fabric.io",
+      "group": "",
+      "labdir": "/root/sparebox/containerlab/clab-sparebox-fabric/r1-1",
+      "kind": "linux",
+      "image": "quay.io/frrouting/frr:10.7.0",
+      "mgmt-net": "",
+      "mgmt-intf": "",
+      "mgmt-ipv4-address": "172.20.20.4",
+      "mgmt-ipv4-prefix-length": 24,
+      "mgmt-ipv6-address": "3fff:172:20:20::4",
+      "mgmt-ipv6-prefix-length": 64,
+      "mac-address": "",
+      "labels": {
+        "clab-mgmt-net-bridge": "br-9ab4a7145d09",
+        "clab-node-group": "",
+        "clab-node-kind": "linux",
+        "clab-node-lab-dir": "/root/sparebox/containerlab/clab-sparebox-fabric/r1-1",
+        "clab-node-longname": "clab-sparebox-fabric-r1-1",
+        "clab-node-name": "r1-1",
+        "clab-node-type": "",
+        "clab-owner": "root",
+        "clab-topo-file": "/root/sparebox/containerlab/topology.clab.yml",
+        "containerlab": "sparebox-fabric"
+      },
+      "port-bindings": [
+      ]
+    },
+    "r1-2": {
+      "index": "7",
+      "shortname": "r1-2",
+      "longname": "clab-sparebox-fabric-r1-2",
+      "fqdn": "r1-2.sparebox-fabric.io",
+      "group": "",
+      "labdir": "/root/sparebox/containerlab/clab-sparebox-fabric/r1-2",
+      "kind": "linux",
+      "image": "quay.io/frrouting/frr:10.7.0",
+      "mgmt-net": "",
+      "mgmt-intf": "",
+      "mgmt-ipv4-address": "172.20.20.5",
+      "mgmt-ipv4-prefix-length": 24,
+      "mgmt-ipv6-address": "3fff:172:20:20::5",
+      "mgmt-ipv6-prefix-length": 64,
+      "mac-address": "",
+      "labels": {
+        "clab-mgmt-net-bridge": "br-9ab4a7145d09",
+        "clab-node-group": "",
+        "clab-node-kind": "linux",
+        "clab-node-lab-dir": "/root/sparebox/containerlab/clab-sparebox-fabric/r1-2",
+        "clab-node-longname": "clab-sparebox-fabric-r1-2",
+        "clab-node-name": "r1-2",
+        "clab-node-type": "",
+        "clab-owner": "root",
+        "clab-topo-file": "/root/sparebox/containerlab/topology.clab.yml",
+        "containerlab": "sparebox-fabric"
+      },
+      "port-bindings": [
+      ]
+    },
+    "r2-1": {
+      "index": "8",
+      "shortname": "r2-1",
+      "longname": "clab-sparebox-fabric-r2-1",
+      "fqdn": "r2-1.sparebox-fabric.io",
+      "group": "",
+      "labdir": "/root/sparebox/containerlab/clab-sparebox-fabric/r2-1",
+      "kind": "linux",
+      "image": "quay.io/frrouting/frr:10.7.0",
+      "mgmt-net": "",
+      "mgmt-intf": "",
+      "mgmt-ipv4-address": "172.20.20.3",
+      "mgmt-ipv4-prefix-length": 24,
+      "mgmt-ipv6-address": "3fff:172:20:20::3",
+      "mgmt-ipv6-prefix-length": 64,
+      "mac-address": "",
+      "labels": {
+        "clab-mgmt-net-bridge": "br-9ab4a7145d09",
+        "clab-node-group": "",
+        "clab-node-kind": "linux",
+        "clab-node-lab-dir": "/root/sparebox/containerlab/clab-sparebox-fabric/r2-1",
+        "clab-node-longname": "clab-sparebox-fabric-r2-1",
+        "clab-node-name": "r2-1",
+        "clab-node-type": "",
+        "clab-owner": "root",
+        "clab-topo-file": "/root/sparebox/containerlab/topology.clab.yml",
+        "containerlab": "sparebox-fabric"
+      },
+      "port-bindings": [
+      ]
+    },
+    "r2-2": {
+      "index": "9",
+      "shortname": "r2-2",
+      "longname": "clab-sparebox-fabric-r2-2",
+      "fqdn": "r2-2.sparebox-fabric.io",
+      "group": "",
+      "labdir": "/root/sparebox/containerlab/clab-sparebox-fabric/r2-2",
+      "kind": "linux",
+      "image": "quay.io/frrouting/frr:10.7.0",
+      "mgmt-net": "",
+      "mgmt-intf": "",
+      "mgmt-ipv4-address": "172.20.20.6",
+      "mgmt-ipv4-prefix-length": 24,
+      "mgmt-ipv6-address": "3fff:172:20:20::6",
+      "mgmt-ipv6-prefix-length": 64,
+      "mac-address": "",
+      "labels": {
+        "clab-mgmt-net-bridge": "br-9ab4a7145d09",
+        "clab-node-group": "",
+        "clab-node-kind": "linux",
+        "clab-node-lab-dir": "/root/sparebox/containerlab/clab-sparebox-fabric/r2-2",
+        "clab-node-longname": "clab-sparebox-fabric-r2-2",
+        "clab-node-name": "r2-2",
+        "clab-node-type": "",
+        "clab-owner": "root",
+        "clab-topo-file": "/root/sparebox/containerlab/topology.clab.yml",
+        "containerlab": "sparebox-fabric"
+      },
+      "port-bindings": [
+      ]
+    },
+    "r3-1": {
+      "index": "10",
+      "shortname": "r3-1",
+      "longname": "clab-sparebox-fabric-r3-1",
+      "fqdn": "r3-1.sparebox-fabric.io",
+      "group": "",
+      "labdir": "/root/sparebox/containerlab/clab-sparebox-fabric/r3-1",
+      "kind": "linux",
+      "image": "quay.io/frrouting/frr:10.7.0",
+      "mgmt-net": "",
+      "mgmt-intf": "",
+      "mgmt-ipv4-address": "172.20.20.2",
+      "mgmt-ipv4-prefix-length": 24,
+      "mgmt-ipv6-address": "3fff:172:20:20::2",
+      "mgmt-ipv6-prefix-length": 64,
+      "mac-address": "",
+      "labels": {
+        "clab-mgmt-net-bridge": "br-9ab4a7145d09",
+        "clab-node-group": "",
+        "clab-node-kind": "linux",
+        "clab-node-lab-dir": "/root/sparebox/containerlab/clab-sparebox-fabric/r3-1",
+        "clab-node-longname": "clab-sparebox-fabric-r3-1",
+        "clab-node-name": "r3-1",
+        "clab-node-type": "",
+        "clab-owner": "root",
+        "clab-topo-file": "/root/sparebox/containerlab/topology.clab.yml",
+        "containerlab": "sparebox-fabric"
+      },
+      "port-bindings": [
+      ]
+    },
+    "r3-2": {
+      "index": "11",
+      "shortname": "r3-2",
+      "longname": "clab-sparebox-fabric-r3-2",
+      "fqdn": "r3-2.sparebox-fabric.io",
+      "group": "",
+      "labdir": "/root/sparebox/containerlab/clab-sparebox-fabric/r3-2",
+      "kind": "linux",
+      "image": "quay.io/frrouting/frr:10.7.0",
+      "mgmt-net": "",
+      "mgmt-intf": "",
+      "mgmt-ipv4-address": "172.20.20.7",
+      "mgmt-ipv4-prefix-length": 24,
+      "mgmt-ipv6-address": "3fff:172:20:20::7",
+      "mgmt-ipv6-prefix-length": 64,
+      "mac-address": "",
+      "labels": {
+        "clab-mgmt-net-bridge": "br-9ab4a7145d09",
+        "clab-node-group": "",
+        "clab-node-kind": "linux",
+        "clab-node-lab-dir": "/root/sparebox/containerlab/clab-sparebox-fabric/r3-2",
+        "clab-node-longname": "clab-sparebox-fabric-r3-2",
+        "clab-node-name": "r3-2",
+        "clab-node-type": "",
+        "clab-owner": "root",
+        "clab-topo-file": "/root/sparebox/containerlab/topology.clab.yml",
+        "containerlab": "sparebox-fabric"
+      },
+      "port-bindings": [
+      ]
+    }
+  },
+  "links": [
+    {
+      "endpoints": {
+        "a": {
+          "node": "r1-1",
+          "interface": "eth1",
+          "mac": "aa:c1:ab:75:67:7f",
+          "peer": "z"
+        },
+        "z": {
+          "node": "r1-2",
+          "interface": "eth1",
+          "mac": "aa:c1:ab:6b:90:db",
+          "peer": "a"
+        }
+      }
+    },
+    {
+      "endpoints": {
+        "a": {
+          "node": "r2-1",
+          "interface": "eth1",
+          "mac": "aa:c1:ab:bd:24:5d",
+          "peer": "z"
+        },
+        "z": {
+          "node": "r2-2",
+          "interface": "eth1",
+          "mac": "aa:c1:ab:3e:32:30",
+          "peer": "a"
+        }
+      }
+    },
+    {
+      "endpoints": {
+        "a": {
+          "node": "r3-1",
+          "interface": "eth1",
+          "mac": "aa:c1:ab:bf:ea:07",
+          "peer": "z"
+        },
+        "z": {
+          "node": "r3-2",
+          "interface": "eth1",
+          "mac": "aa:c1:ab:12:4b:43",
+          "peer": "a"
+        }
+      }
+    },
+    {
+      "endpoints": {
+        "a": {
+          "node": "r1-2",
+          "interface": "eth2",
+          "mac": "aa:c1:ab:1c:c4:9f",
+          "peer": "z"
+        },
+        "z": {
+          "node": "r2-1",
+          "interface": "eth2",
+          "mac": "aa:c1:ab:3a:f4:76",
+          "peer": "a"
+        }
+      }
+    },
+    {
+      "endpoints": {
+        "a": {
+          "node": "r2-2",
+          "interface": "eth2",
+          "mac": "aa:c1:ab:68:54:d3",
+          "peer": "z"
+        },
+        "z": {
+          "node": "r3-1",
+          "interface": "eth2",
+          "mac": "aa:c1:ab:71:ea:9b",
+          "peer": "a"
+        }
+      }
+    },
+    {
+      "endpoints": {
+        "a": {
+          "node": "r3-2",
+          "interface": "eth2",
+          "mac": "aa:c1:ab:77:f8:35",
+          "peer": "z"
+        },
+        "z": {
+          "node": "r1-1",
+          "interface": "eth2",
+          "mac": "aa:c1:ab:0a:f8:ab",
+          "peer": "a"
+        }
+      }
+    }
+  ]
+}
