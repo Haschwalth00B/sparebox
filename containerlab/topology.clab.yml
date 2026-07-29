@@ -7,6 +7,7 @@ topology:
       binds:
         - frr/r1-1/daemons:/etc/frr/daemons
         - frr/r1-1/frr.conf:/etc/frr/frr.conf
+        - frr/r1-1/vtysh.conf:/etc/frr/vtysh.conf
       exec:
         - ip link add red type vrf table 10
         - ip link set red up
@@ -18,13 +19,16 @@ topology:
         - ip link add dummy-blue type dummy
         - ip link set dummy-blue master blue
         - ip link set dummy-blue up
-        - vtysh -b
+        - sysctl -w net.mpls.platform_labels=1048575
+        - sysctl -w net.mpls.conf.red.input=1
+        - sysctl -w net.mpls.conf.blue.input=1
     r1-2:
       kind: linux
       image: quay.io/frrouting/frr:10.7.0
       binds:
         - frr/r1-2/daemons:/etc/frr/daemons
         - frr/r1-2/frr.conf:/etc/frr/frr.conf
+        - frr/r1-2/vtysh.conf:/etc/frr/vtysh.conf
       exec:
         - ip link add red type vrf table 10
         - ip link set red up
@@ -36,13 +40,16 @@ topology:
         - ip link add dummy-blue type dummy
         - ip link set dummy-blue master blue
         - ip link set dummy-blue up
-        - vtysh -b
+        - sysctl -w net.mpls.platform_labels=1048575
+        - sysctl -w net.mpls.conf.red.input=1
+        - sysctl -w net.mpls.conf.blue.input=1
     r2-1:
       kind: linux
       image: quay.io/frrouting/frr:10.7.0
       binds:
         - frr/r2-1/daemons:/etc/frr/daemons
         - frr/r2-1/frr.conf:/etc/frr/frr.conf
+        - frr/r2-1/vtysh.conf:/etc/frr/vtysh.conf
       exec:
         - ip link add red type vrf table 10
         - ip link set red up
@@ -54,13 +61,16 @@ topology:
         - ip link add dummy-blue type dummy
         - ip link set dummy-blue master blue
         - ip link set dummy-blue up
-        - vtysh -b
+        - sysctl -w net.mpls.platform_labels=1048575
+        - sysctl -w net.mpls.conf.red.input=1
+        - sysctl -w net.mpls.conf.blue.input=1
     r2-2:
       kind: linux
       image: quay.io/frrouting/frr:10.7.0
       binds:
         - frr/r2-2/daemons:/etc/frr/daemons
         - frr/r2-2/frr.conf:/etc/frr/frr.conf
+        - frr/r2-2/vtysh.conf:/etc/frr/vtysh.conf
       exec:
         - ip link add red type vrf table 10
         - ip link set red up
@@ -72,13 +82,16 @@ topology:
         - ip link add dummy-blue type dummy
         - ip link set dummy-blue master blue
         - ip link set dummy-blue up
-        - vtysh -b
+        - sysctl -w net.mpls.platform_labels=1048575
+        - sysctl -w net.mpls.conf.red.input=1
+        - sysctl -w net.mpls.conf.blue.input=1
     r3-1:
       kind: linux
       image: quay.io/frrouting/frr:10.7.0
       binds:
         - frr/r3-1/daemons:/etc/frr/daemons
         - frr/r3-1/frr.conf:/etc/frr/frr.conf
+        - frr/r3-1/vtysh.conf:/etc/frr/vtysh.conf
       exec:
         - ip link add red type vrf table 10
         - ip link set red up
@@ -90,13 +103,16 @@ topology:
         - ip link add dummy-blue type dummy
         - ip link set dummy-blue master blue
         - ip link set dummy-blue up
-        - vtysh -b
+        - sysctl -w net.mpls.platform_labels=1048575
+        - sysctl -w net.mpls.conf.red.input=1
+        - sysctl -w net.mpls.conf.blue.input=1
     r3-2:
       kind: linux
       image: quay.io/frrouting/frr:10.7.0
       binds:
         - frr/r3-2/daemons:/etc/frr/daemons
         - frr/r3-2/frr.conf:/etc/frr/frr.conf
+        - frr/r3-2/vtysh.conf:/etc/frr/vtysh.conf
       exec:
         - ip link add red type vrf table 10
         - ip link set red up
@@ -108,7 +124,9 @@ topology:
         - ip link add dummy-blue type dummy
         - ip link set dummy-blue master blue
         - ip link set dummy-blue up
-        - vtysh -b
+        - sysctl -w net.mpls.platform_labels=1048575
+        - sysctl -w net.mpls.conf.red.input=1
+        - sysctl -w net.mpls.conf.blue.input=1
 
     ipsec-r1-1:
       kind: linux

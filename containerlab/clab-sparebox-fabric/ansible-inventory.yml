@@ -20,14 +20,14 @@ all:
         clab-sparebox-fabric-ipsec-r3-2:
           ansible_host: 
         clab-sparebox-fabric-r1-1:
-          ansible_host: 172.20.20.4
-        clab-sparebox-fabric-r1-2:
-          ansible_host: 172.20.20.5
-        clab-sparebox-fabric-r2-1:
-          ansible_host: 172.20.20.3
-        clab-sparebox-fabric-r2-2:
           ansible_host: 172.20.20.6
-        clab-sparebox-fabric-r3-1:
-          ansible_host: 172.20.20.2
-        clab-sparebox-fabric-r3-2:
+        clab-sparebox-fabric-r1-2:
+          ansible_host: 172.20.20.4
+        clab-sparebox-fabric-r2-1:
           ansible_host: 172.20.20.7
+        clab-sparebox-fabric-r2-2:
+          ansible_host: 172.20.20.3
+        clab-sparebox-fabric-r3-1:
+          ansible_host: 172.20.20.5
+        clab-sparebox-fabric-r3-2:
+          ansible_host: 172.20.20.2
