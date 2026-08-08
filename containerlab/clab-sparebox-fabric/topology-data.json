@@ -214,9 +214,9 @@
       "image": "quay.io/frrouting/frr:10.7.0",
       "mgmt-net": "",
       "mgmt-intf": "",
-      "mgmt-ipv4-address": "172.20.20.6",
+      "mgmt-ipv4-address": "172.20.20.3",
       "mgmt-ipv4-prefix-length": 24,
-      "mgmt-ipv6-address": "3fff:172:20:20::6",
+      "mgmt-ipv6-address": "3fff:172:20:20::3",
       "mgmt-ipv6-prefix-length": 64,
       "mac-address": "",
       "labels": {
@@ -245,9 +245,9 @@
       "image": "quay.io/frrouting/frr:10.7.0",
       "mgmt-net": "",
       "mgmt-intf": "",
-      "mgmt-ipv4-address": "172.20.20.4",
+      "mgmt-ipv4-address": "172.20.20.2",
       "mgmt-ipv4-prefix-length": 24,
-      "mgmt-ipv6-address": "3fff:172:20:20::4",
+      "mgmt-ipv6-address": "3fff:172:20:20::2",
       "mgmt-ipv6-prefix-length": 64,
       "mac-address": "",
       "labels": {
@@ -307,9 +307,9 @@
       "image": "quay.io/frrouting/frr:10.7.0",
       "mgmt-net": "",
       "mgmt-intf": "",
-      "mgmt-ipv4-address": "172.20.20.3",
+      "mgmt-ipv4-address": "172.20.20.5",
       "mgmt-ipv4-prefix-length": 24,
-      "mgmt-ipv6-address": "3fff:172:20:20::3",
+      "mgmt-ipv6-address": "3fff:172:20:20::5",
       "mgmt-ipv6-prefix-length": 64,
       "mac-address": "",
       "labels": {
@@ -338,9 +338,9 @@
       "image": "quay.io/frrouting/frr:10.7.0",
       "mgmt-net": "",
       "mgmt-intf": "",
-      "mgmt-ipv4-address": "172.20.20.5",
+      "mgmt-ipv4-address": "172.20.20.4",
       "mgmt-ipv4-prefix-length": 24,
-      "mgmt-ipv6-address": "3fff:172:20:20::5",
+      "mgmt-ipv6-address": "3fff:172:20:20::4",
       "mgmt-ipv6-prefix-length": 64,
       "mac-address": "",
       "labels": {
@@ -369,9 +369,9 @@
       "image": "quay.io/frrouting/frr:10.7.0",
       "mgmt-net": "",
       "mgmt-intf": "",
-      "mgmt-ipv4-address": "172.20.20.2",
+      "mgmt-ipv4-address": "172.20.20.6",
       "mgmt-ipv4-prefix-length": 24,
-      "mgmt-ipv6-address": "3fff:172:20:20::2",
+      "mgmt-ipv6-address": "3fff:172:20:20::6",
       "mgmt-ipv6-prefix-length": 64,
       "mac-address": "",
       "labels": {
@@ -396,13 +396,13 @@
         "a": {
           "node": "r1-1",
           "interface": "eth1",
-          "mac": "aa:c1:ab:bb:6e:56",
+          "mac": "aa:c1:ab:7e:17:0e",
           "peer": "z"
         },
         "z": {
           "node": "r1-2",
           "interface": "eth1",
-          "mac": "aa:c1:ab:21:2e:fb",
+          "mac": "aa:c1:ab:9d:d2:ed",
           "peer": "a"
         }
       }
@@ -412,13 +412,13 @@
         "a": {
           "node": "r2-1",
           "interface": "eth1",
-          "mac": "aa:c1:ab:25:90:0b",
+          "mac": "aa:c1:ab:d3:e2:19",
           "peer": "z"
         },
         "z": {
           "node": "r2-2",
           "interface": "eth1",
-          "mac": "aa:c1:ab:85:ab:32",
+          "mac": "aa:c1:ab:e5:11:05",
           "peer": "a"
         }
       }
@@ -428,13 +428,13 @@
         "a": {
           "node": "r3-1",
           "interface": "eth1",
-          "mac": "aa:c1:ab:41:d1:36",
+          "mac": "aa:c1:ab:c2:3a:b8",
           "peer": "z"
         },
         "z": {
           "node": "r3-2",
           "interface": "eth1",
-          "mac": "aa:c1:ab:61:76:1a",
+          "mac": "aa:c1:ab:81:4d:a0",
           "peer": "a"
         }
       }
@@ -444,13 +444,13 @@
         "a": {
           "node": "r1-2",
           "interface": "eth2",
-          "mac": "aa:c1:ab:58:5e:0e",
+          "mac": "aa:c1:ab:cd:10:fd",
           "peer": "z"
         },
         "z": {
           "node": "r2-1",
           "interface": "eth2",
-          "mac": "aa:c1:ab:71:1a:fe",
+          "mac": "aa:c1:ab:03:51:44",
           "peer": "a"
         }
       }
@@ -460,13 +460,13 @@
         "a": {
           "node": "r2-2",
           "interface": "eth2",
-          "mac": "aa:c1:ab:44:40:7d",
+          "mac": "aa:c1:ab:6e:29:9d",
           "peer": "z"
         },
         "z": {
           "node": "r3-1",
           "interface": "eth2",
-          "mac": "aa:c1:ab:e1:56:cc",
+          "mac": "aa:c1:ab:f0:4f:7d",
           "peer": "a"
         }
       }
@@ -476,13 +476,13 @@
         "a": {
           "node": "r3-2",
           "interface": "eth2",
-          "mac": "aa:c1:ab:6e:ec:1e",
+          "mac": "aa:c1:ab:f1:4d:df",
           "peer": "z"
         },
         "z": {
           "node": "r1-1",
           "interface": "eth2",
-          "mac": "aa:c1:ab:86:0b:d0",
+          "mac": "aa:c1:ab:f3:5d:79",
           "peer": "a"
         }
       }
