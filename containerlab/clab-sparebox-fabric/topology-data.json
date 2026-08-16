@@ -214,9 +214,9 @@
       "image": "quay.io/frrouting/frr:10.7.0",
       "mgmt-net": "",
       "mgmt-intf": "",
-      "mgmt-ipv4-address": "172.20.20.7",
+      "mgmt-ipv4-address": "172.20.20.5",
       "mgmt-ipv4-prefix-length": 24,
-      "mgmt-ipv6-address": "3fff:172:20:20::7",
+      "mgmt-ipv6-address": "3fff:172:20:20::5",
       "mgmt-ipv6-prefix-length": 64,
       "mac-address": "",
       "labels": {
@@ -245,9 +245,9 @@
       "image": "quay.io/frrouting/frr:10.7.0",
       "mgmt-net": "",
       "mgmt-intf": "",
-      "mgmt-ipv4-address": "172.20.20.6",
+      "mgmt-ipv4-address": "172.20.20.7",
       "mgmt-ipv4-prefix-length": 24,
-      "mgmt-ipv6-address": "3fff:172:20:20::6",
+      "mgmt-ipv6-address": "3fff:172:20:20::7",
       "mgmt-ipv6-prefix-length": 64,
       "mac-address": "",
       "labels": {
@@ -307,9 +307,9 @@
       "image": "quay.io/frrouting/frr:10.7.0",
       "mgmt-net": "",
       "mgmt-intf": "",
-      "mgmt-ipv4-address": "172.20.20.2",
+      "mgmt-ipv4-address": "172.20.20.6",
       "mgmt-ipv4-prefix-length": 24,
-      "mgmt-ipv6-address": "3fff:172:20:20::2",
+      "mgmt-ipv6-address": "3fff:172:20:20::6",
       "mgmt-ipv6-prefix-length": 64,
       "mac-address": "",
       "labels": {
@@ -369,9 +369,9 @@
       "image": "quay.io/frrouting/frr:10.7.0",
       "mgmt-net": "",
       "mgmt-intf": "",
-      "mgmt-ipv4-address": "172.20.20.5",
+      "mgmt-ipv4-address": "172.20.20.2",
       "mgmt-ipv4-prefix-length": 24,
-      "mgmt-ipv6-address": "3fff:172:20:20::5",
+      "mgmt-ipv6-address": "3fff:172:20:20::2",
       "mgmt-ipv6-prefix-length": 64,
       "mac-address": "",
       "labels": {
@@ -396,13 +396,13 @@
         "a": {
           "node": "r1-1",
           "interface": "eth1",
-          "mac": "aa:c1:ab:b2:69:a5",
+          "mac": "aa:c1:ab:7e:07:b8",
           "peer": "z"
         },
         "z": {
           "node": "r1-2",
           "interface": "eth1",
-          "mac": "aa:c1:ab:50:fd:a2",
+          "mac": "aa:c1:ab:ac:f3:68",
           "peer": "a"
         }
       }
@@ -412,13 +412,13 @@
         "a": {
           "node": "r2-1",
           "interface": "eth1",
-          "mac": "aa:c1:ab:2f:5a:75",
+          "mac": "aa:c1:ab:98:23:03",
           "peer": "z"
         },
         "z": {
           "node": "r2-2",
           "interface": "eth1",
-          "mac": "aa:c1:ab:f4:e4:4c",
+          "mac": "aa:c1:ab:9f:b9:32",
           "peer": "a"
         }
       }
@@ -428,13 +428,13 @@
         "a": {
           "node": "r3-1",
           "interface": "eth1",
-          "mac": "aa:c1:ab:32:99:0d",
+          "mac": "aa:c1:ab:37:23:11",
           "peer": "z"
         },
         "z": {
           "node": "r3-2",
           "interface": "eth1",
-          "mac": "aa:c1:ab:e3:6d:87",
+          "mac": "aa:c1:ab:ac:43:fe",
           "peer": "a"
         }
       }
@@ -444,13 +444,13 @@
         "a": {
           "node": "r1-2",
           "interface": "eth2",
-          "mac": "aa:c1:ab:3e:1a:ed",
+          "mac": "aa:c1:ab:41:bb:3a",
           "peer": "z"
         },
         "z": {
           "node": "r2-1",
           "interface": "eth2",
-          "mac": "aa:c1:ab:41:47:48",
+          "mac": "aa:c1:ab:55:4f:fc",
           "peer": "a"
         }
       }
@@ -460,13 +460,13 @@
         "a": {
           "node": "r2-2",
           "interface": "eth2",
-          "mac": "aa:c1:ab:67:06:72",
+          "mac": "aa:c1:ab:b2:4d:75",
           "peer": "z"
         },
         "z": {
           "node": "r3-1",
           "interface": "eth2",
-          "mac": "aa:c1:ab:a2:7a:c5",
+          "mac": "aa:c1:ab:0a:3c:5d",
           "peer": "a"
         }
       }
@@ -476,13 +476,13 @@
         "a": {
           "node": "r3-2",
           "interface": "eth2",
-          "mac": "aa:c1:ab:33:1d:a4",
+          "mac": "aa:c1:ab:1b:81:04",
           "peer": "z"
         },
         "z": {
           "node": "r1-1",
           "interface": "eth2",
-          "mac": "aa:c1:ab:14:80:43",
+          "mac": "aa:c1:ab:d7:84:99",
           "peer": "a"
         }
       }
