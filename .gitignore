@@ -1,0 +1,5 @@
+# Containerlab generated artifacts
+containerlab/clab-sparebox-fabric/.tls/
+containerlab/clab-sparebox-fabric/ansible-inventory.yml
+containerlab/clab-sparebox-fabric/nornir-simple-inventory.yml
+containerlab/clab-sparebox-fabric/topology-data.json

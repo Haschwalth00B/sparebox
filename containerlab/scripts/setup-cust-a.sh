@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Run once after every `containerlab deploy` — VRF-lite kernel state
 # (the CUST-A device + MPLS sysctls) doesn't persist across container
 # recreation and zebra won't create it itself. Safe to re-run.
