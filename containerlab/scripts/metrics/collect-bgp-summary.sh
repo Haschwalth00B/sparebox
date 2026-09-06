@@ -13,12 +13,8 @@
 #   ./collect-bgp-summary.sh
 # Output is InfluxDB line protocol -- each line is one metric point.
 #
-# ASSUMPTION -- VERIFY BEFORE RELYING ON THIS:
-# containerlab names its containers "clab-<lab-name>-<node-name>". Set
-# CLAB_PREFIX to match what `docker ps` / `containerlab inspect` actually
-# shows on sparebox -- the lab `name:` field in
-# containerlab/topology.clab.yml is what determines this, and it may not
-# be "sparebox".
+# CONFIRMED: Containerlab names these containers with the
+# "clab-sparebox-fabric-<node>" prefix on the deployed sparebox lab.
 set -euo pipefail
 
 CLAB_PREFIX="clab-sparebox-fabric"
@@ -41,12 +37,9 @@ for router in "${!ROUTERS[@]}"; do
     continue
   fi
 
-  # NOTE -- UNVERIFIED against real FRR output on this box. Check first:
-  #   docker exec <container> vtysh -c "show bgp ipv4 unicast summary json" | jq .
-  # FRR nests peers under an AFI/SAFI key (e.g. "ipv4Unicast") on some
-  # versions and returns "peers" at the top level on others -- the
-  # `// .peers //` fallback below covers both, but confirm the real
-  # field names (state, pfxRcd, msgRcvd) match what your version emits.
+  # CONFIRMED: The deployed FRR output exposes BGP peers under
+  # .ipv4Unicast.peers. The fallback to .peers is retained for
+  # compatibility with alternate FRR JSON layouts.
   echo "$summary_json" | jq -r --arg router "$router" --arg region "$region" '
     (.ipv4Unicast.peers // .peers // {}) | to_entries[] |
     "frr_bgp_peer,router=" + $router + ",region=" + $region + ",peer=" + .key +
