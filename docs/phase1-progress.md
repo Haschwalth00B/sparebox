@@ -149,6 +149,79 @@ and data plane (`ping`) were all independently checked. Config is committed
 and pushed (`containerlab/frr/r1-1/frr.conf`, `r1-2/frr.conf`,
 `containerlab/scripts/setup-cust-a.sh`).
 
+
+## Week 5 — Metrics pipeline & Grafana dashboard
+
+### Telegraf → VictoriaMetrics
+
+`services.victoriametrics` (single-node, 30d retention, loopback-only) +
+`services.telegraf`, both host-level NixOS services — not part of the
+containerlab topology itself.
+
+Step 1 scope: BGP peer state only, via
+`containerlab/scripts/metrics/collect-bgp-summary.sh` — `docker exec`s
+`vtysh show bgp ipv4 unicast summary json` against all 6 ring routers,
+emits one influx line-protocol point per peer
+(`frr_bgp_peer,router=...,region=...,peer=... up=..,pfx_rcvd=..,msg_rcvd=..`).
+
+Confirmed working end-to-end: querying VM's Prometheus-compatible API
+(`frr_bgp_peer_up`) returns all 12 ring peers with real peer IPs and
+`up=1` once containerlab is actually deployed. (An earlier check showed
+`peer=unknown, up=0` for every router — that's the collector's own
+fallback branch firing because the lab wasn't deployed at the time, not a
+bug in the collector itself.)
+
+OSPF, LDP/VPNv4 VRF state, interface counters, and IPsec tunnel status are
+deliberately out of scope for this collector — separate `inputs.exec`
+entries to add later, kept independent so a bad `jq` path in one collector
+can't take down a working one.
+
+### Grafana
+
+`services.grafana` added to the same module, provisioned entirely
+declaratively: a VictoriaMetrics datasource (`type = "prometheus"`, since
+VM speaks the Prometheus query API; explicit `uid = "victoriametrics"`)
+plus a file-provisioned dashboard
+(`grafana/dashboards/topology-health.json`, wired in via
+`environment.etc` + `provision.dashboards.settings.providers`).
+
+Dashboard: Ring BGP Health stat (% peers up), Peer Status table, Prefixes
+Received per Peer and BGP Messages Received (rate/5m) time series.
+Confirmed rendering real data — 100% health, 12 peers, live time series —
+once the lab was up.
+
+NixOS 26.05 requires an explicit
+`services.grafana.settings.security.secret_key` (no default value
+anymore). Generated on first boot via a `preStart` script writing a random
+32-byte hex key to `/var/lib/grafana/secret_key` (`chmod 600`), rather
+than hardcoding a static key or standing up sops-nix seven weeks early for
+one value — the sops-nix migration is a one-line swap when Week 12
+arrives.
+
+### Incidents hit standing this up
+
+1. **Stale `/etc/nixos`.** Turned out to be a separate, non-symlinked
+   flake copy untouched since Jul 15 (predating `~/sparebox` becoming the
+   single source of truth). A bare `nixos-rebuild switch` (no `--flake`
+   flag) silently built from `/etc/nixos` instead — telegraf/
+   VictoriaMetrics/grafana all vanished from the built generation with no
+   error, since they simply weren't declared there. Always rebuild with
+   `nixos-rebuild switch --flake .#sparebox` (see `docs/runbook.md`).
+2. **Grafana datasource provisioning crash loop.** Pinning an explicit
+   `uid` onto a datasource after one with an auto-generated uid already
+   existed under the same name caused a boot-time crash loop
+   (`Datasource provisioning error: data source not found`) — a known
+   Grafana limitation (provisioning can create-with-uid or
+   update-matching-uid, not retroactively rewrite an existing uid), not a
+   config mistake. Fixed by clearing Grafana's state and letting it
+   re-provision clean.
+3. **`/var/lib/grafana` is Nix-activation-managed, not
+   systemctl-managed.** Manually `rm -rf`'ing it and restarting via bare
+   `systemctl start` broke Grafana (`CHDIR` failure) — `conf`/`tools`
+   under that directory are symlinks into the nix store set up by NixOS
+   activation, not by the grafana process itself. Only
+   `nixos-rebuild switch` correctly regenerates that structure.
+
 ## Deferred, not dropped: full red/blue Inter-AS Option B
 
 See `docs/decisions/0001-option-b-defer.md` for the full reasoning. Short
