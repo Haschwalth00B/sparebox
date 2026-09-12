@@ -1,16 +1,3 @@
-# modules/observability.nix
-#
-# Week 5 metrics pipeline, step 1: Telegraf -> VictoriaMetrics, running as
-# host-level NixOS services (not injected into the containerlab topology
-# itself). Telegraf reaches into the router containers via `docker exec`,
-# the same way BGP/LDP/MPLS state has been verified by hand all through
-# Week 5 -- this just automates and schedules that.
-#
-# Scope of this step: BGP peer state only (collect-bgp-summary.sh).
-# OSPF, LDP/VPNv4 VRF state, interface counters, and IPsec tunnel status
-# are separate inputs.exec entries to add once this slice is confirmed
-# flowing end-to-end -- not folded in here, so a bad jq path in a later
-# collector can't take down a working one.
 { config, pkgs, lib, ... }:
 
 {
@@ -22,6 +9,7 @@
 
   services.telegraf = {
     enable = true;
+
     extraConfig = {
       agent = {
         interval = "15s";
@@ -29,35 +17,93 @@
         flush_interval = "15s";
       };
 
-      # VictoriaMetrics' single-node binary accepts InfluxDB line protocol
-      # on its /write endpoint, so Telegraf can talk to it as a plain
-      # InfluxDB output with no VM-specific plugin needed.
-      outputs.influxdb = [{
-        urls = [ "http://127.0.0.1:8428" ];
-        database = "sparebox";
-        skip_database_creation = true;
-      }];
+      outputs.influxdb = [
+        {
+          urls = [ "http://127.0.0.1:8428" ];
+          database = "sparebox";
+          skip_database_creation = true;
+        }
+      ];
 
-      inputs.exec = [{
-        commands = [ "/etc/sparebox/scripts/collect-bgp-summary.sh" ];
-        timeout = "10s";
-        data_format = "influx";
-      }];
+      inputs.exec = [
+        {
+          commands = [
+            "/etc/sparebox/scripts/collect-bgp-summary.sh"
+          ];
+          timeout = "10s";
+          data_format = "influx";
+        }
+      ];
     };
   };
 
-  # telegraf's exec input shells out to `docker exec` against the
-  # containerlab node containers, so it needs docker group membership
-  # and docker.service up before it starts scraping.
-  users.users.telegraf.extraGroups = [ "docker" ];
+  services.grafana = {
+    enable = true;
+
+    settings.server = {
+      http_addr = "192.168.1.35";
+      http_port = 3000;
+    };
+
+    settings.security.secret_key =
+      "$__file{/var/lib/grafana/secret_key}";
+    
+    provision.datasources.settings.datasources = [
+      {
+    	name = "VictoriaMetrics";
+    	uid = "victoriametrics";
+    	type = "prometheus";
+    	access = "proxy";
+    	url = "http://127.0.0.1:8428";
+    	isDefault = true;
+      }
+    ];
+    
+    provision.dashboards.settings.providers = [
+      {
+        name = "sparebox";
+        options.path = "/etc/grafana/dashboards";
+      }
+    ];
+  };
+
+  systemd.services.grafana.preStart = lib.mkAfter ''
+    if [ ! -f /var/lib/grafana/secret_key ]; then
+      ${pkgs.openssl}/bin/openssl rand -hex 32 > /var/lib/grafana/secret_key
+      chmod 600 /var/lib/grafana/secret_key
+    fi
+  '';
+
+  networking.firewall.allowedTCPPorts = [
+    3000
+  ];
+
+  users.users.telegraf.extraGroups = [
+    "docker"
+  ];
+
   systemd.services.telegraf = {
-    after = [ "docker.service" ];
-    wants = [ "docker.service" ];
-    path = [ pkgs.docker pkgs.jq pkgs.bash ];
+    after = [
+      "docker.service"
+    ];
+
+    wants = [
+      "docker.service"
+    ];
+
+    path = [
+      pkgs.docker
+      pkgs.jq
+      pkgs.bash
+    ];
   };
 
   environment.etc."sparebox/scripts/collect-bgp-summary.sh" = {
     source = ../containerlab/scripts/metrics/collect-bgp-summary.sh;
     mode = "0755";
   };
+
+  environment.etc."grafana/dashboards/topology-health.json".source =
+    ../grafana/dashboards/topology-health.json;
 }
+
