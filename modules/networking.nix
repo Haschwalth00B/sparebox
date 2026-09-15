@@ -42,4 +42,9 @@
     ipcalc
     openssl
   ];
+  networking.dhcpcd.denyInterfaces = [
+    "clab-*"
+    "veth*"
+    "br-*"
+  ];
 }

@@ -9,6 +9,7 @@
     # MPLS forwarding for the Containerlab fabric's Week 5 VPNv4 work
     "mpls_router"
     "mpls_iptunnel"
+    "sch_netem"
   ];
   boot.kernel.sysctl = {
     # bridged traffic through iptables — required by k3s/Calico/Flannel
