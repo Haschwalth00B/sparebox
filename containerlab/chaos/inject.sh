@@ -489,10 +489,15 @@ SCENARIOS=(
   ipsec-freeze
 )
 
+
 do_fail() {
   local s="$1" t="$2"
 
-  case "$s" in
+  # Injection must be transactional. If a multi-step fault partially
+  # succeeds and a later operation fails, immediately undo whatever the
+  # scenario may have changed. The heal functions are intentionally
+  # idempotent, so this is safe even when nothing was recorded yet.
+  if ! case "$s" in
     link-down)
       fail_link_down "$t"
       ;;
@@ -515,7 +520,14 @@ do_fail() {
       die "unknown scenario '$s' (try: ./inject.sh list)"
       ;;
   esac
+  then
+    log "FAIL injection failed — attempting immediate rollback"
+    do_heal "$s" "$t" 2>/dev/null || true
+    return 1
+  fi
 }
+
+
 
 do_heal() {
   local s="$1" t="$2"
