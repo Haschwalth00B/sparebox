@@ -1,246 +1,581 @@
-# Phase 1 Progress — Network Fabric (Weeks 1–5)
+# Phase 1 — Network Fabric: Final Progress & Verification
 
-Covers the debugging journey behind what's already shipped and committed.
-Command-level verification detail lives here; `docs/runbook.md` holds the
-distilled operational lessons; `docs/decisions/0001-option-b-defer.md` holds
-the reasoning behind the one real scope decision made this phase.
+**Status:** Complete  
+**Phase:** 1 of the Sparebox capstone  
+**Scope:** Weeks 1–6  
+**Finalized:** 2026-09-17  
+**Primary branch:** `dev`
 
-## Topology & IP/ASN plan
+Phase 1 establishes the reproducible network-fabric foundation for Sparebox. It combines a three-region FRR/Containerlab fabric, OSPF and BGP routing, a redundant inter-region ring, strongSwan transport-mode IPsec, a verified single-VRF MPLS/VPNv4 pilot, host-level metrics and Grafana, and scripted failure-injection benchmarking.
+
+This document is the final Phase 1 record. It covers the shipped architecture, the decisions and debugging that shaped it, the final verification evidence, the Week 6 benchmark results, known limitations, and the operational handoff into Phase 2.
+
+---
+
+## 1. Phase 1 outcome
+
+Phase 1 is complete and reproducible from the repository state on `dev`.
+
+The delivered Phase 1 surface is:
+
+- 3 routing regions / ASes: `65001`, `65002`, `65003`.
+- 6 FRR routers: two per region.
+- OSPF for intra-region reachability.
+- 18 IPv4 BGP sessions total: 6 iBGP sessions plus 12 inter-region eBGP sessions.
+- A primary three-link inter-region ring plus three redundant inter-region links.
+- 6 strongSwan sidecars sharing the FRR router network namespaces.
+- Transport-mode IKEv2/ESP protection on the three primary inter-region links.
+- A single-VRF `CUST-A` VPNv4/MPLS pilot between `r1-1` and `r1-2`.
+- LDP intentionally limited to the r1 pair for the pilot; it is not enabled as a fabric-wide LDP domain.
+- Host-level Telegraf → VictoriaMetrics telemetry for BGP peer state.
+- A declaratively provisioned Grafana dashboard for the collected BGP metrics.
+- Scripted chaos injection, probing, trial execution and analysis.
+- 60 formal link-down trials, 20 formal link-blackhole trials, and additional smoke coverage for other fault classes.
+- A reproducible strongSwan-vs-WireGuard tunnel benchmark.
+
+The main Phase 1 acceptance evidence is stored in:
+
+- `containerlab/chaos/results/week6-benchmark.csv`
+- `containerlab/chaos/results/tunnel-benchmark.csv`
+- `containerlab/chaos/inject.sh`
+- `containerlab/chaos/probe.sh`
+- `containerlab/chaos/trial.sh`
+- `containerlab/chaos/analyze.sh`
+- `containerlab/chaos/benchmark/tunnel-benchmark.sh`
+
+---
+
+## 2. Final topology and addressing
+
+### 2.1 Regions and loopbacks
 
 | Region | ASN | Routers | Loopbacks | Intra-region subnet |
-|---|---|---|---|---|
-| r1 | 65001 | r1-1, r1-2 | `10.0.1.1/32`, `10.0.1.2/32` | `10.1.0.0/24` |
-| r2 | 65002 | r2-1, r2-2 | `10.0.2.1/32`, `10.0.2.2/32` | `10.2.0.0/24` |
-| r3 | 65003 | r3-1, r3-2 | `10.0.3.1/32`, `10.0.3.2/32` | `10.3.0.0/24` |
+|---|---:|---|---|---|
+| r1 | 65001 | `r1-1`, `r1-2` | `10.0.1.1/32`, `10.0.1.2/32` | `10.1.0.0/24` |
+| r2 | 65002 | `r2-1`, `r2-2` | `10.0.2.1/32`, `10.0.2.2/32` | `10.2.0.0/24` |
+| r3 | 65003 | `r3-1`, `r3-2` | `10.0.3.1/32`, `10.0.3.2/32` | `10.3.0.0/24` |
 
-Ring transit links: `10.12.0.0/30` (r1-2↔r2-1), `10.23.0.0/30` (r2-2↔r3-1),
-`10.31.0.0/30` (r3-2↔r1-1). Two FRR routers per region
-(`quay.io/frrouting/frr:10.7.0`), full-mesh iBGP within each region,
-eBGP on the ring between regions.
+Each region uses OSPF internally and iBGP between its two routers. Inter-region reachability is provided by eBGP across the ring and the redundant ring links.
 
-## Week 2 — Fabric bring-up (shipped)
+### 2.2 Primary inter-region ring
 
-3-region Containerlab topology, 2 FRR routers per region, intra-region OSPF
-full adjacency on all three regions.
+| Link | Endpoints | Subnet |
+|---|---|---|
+| link12 | `r1-2:eth2` ↔ `r2-1:eth2` | `10.12.0.0/30` |
+| link23 | `r2-2:eth2` ↔ `r3-1:eth2` | `10.23.0.0/30` |
+| link31 | `r3-2:eth2` ↔ `r1-1:eth2` | `10.31.0.0/30` |
 
-## Week 3 — eBGP ring + IPsec (shipped)
+### 2.3 Redundant inter-region links
 
-eBGP ring (region1↔region2↔region3↔region1) plus iBGP within each region;
-cross-ring reachability proven. strongSwan running as Containerlab sidecars
-(`network-mode: container:<router>`, custom `local/strongswan:5.9` image),
-transport-mode PSK tunnels on all 3 transit links.
+Containerlab also carries a second inter-region path for each region boundary:
 
-**Verification:** tcpdump on each transit interface concurrent with a ping
-between the link's two IPs — confirmed ESP-only capture, no cleartext
-leakage, on all 3 links.
+- `r1-1:eth3` ↔ `r2-2:eth3`
+- `r2-1:eth3` ↔ `r3-2:eth3`
+- `r3-1:eth3` ↔ `r1-2:eth3`
 
-**Known gaps, both now closed:**
-- IPsec tunnels negotiate NAT-T despite no NAT device present — cosmetic,
-  caused by the strongSwan sidecar sharing the router's full netns. Not
-  fixed (scoping `charon.interfaces_use` per node would close it), but
-  doesn't affect correctness.
-- tcpdump wasn't baked into either image, so Week 3/5 captures needed an ad
-  hoc `apk add tcpdump` that didn't survive a container recreation. **Closed
-  since:** `containerlab/strongswan/Dockerfile` now installs tcpdump at
-  build time.
+These links are what make the Week 6 link-down tests meaningful: a primary inter-region path can fail while the fabric has an alternate route.
 
-## Week 4 — BAH 2026 buffer
+The topology is defined in `containerlab/topology.clab.yml`; generated Containerlab artifacts are intentionally not treated as source-of-truth configuration.
 
-Skipped; went straight into Week 5.
+---
 
-## Week 5 — MP-BGP VPNv4 segmentation
+## 3. Week 2 — Fabric bring-up
 
-### Original design: red/blue dual-VRF Option B
+The base fabric was brought up as a six-router Containerlab topology using `quay.io/frrouting/frr:10.7.0`.
 
-Two VRFs (`red`, `blue`) across all three regions, per-router RD with a
-shared per-VRF RT (red = `65000:100`, blue = `65000:200`), full Inter-AS
-MPLS VPN Option B, LDP scoped per-region, dummy loopbacks per VRF per
-router for ping-based segmentation proof.
+The key delivered properties were:
 
-### What went wrong
+- Three independent routing regions.
+- Two FRR routers in every region.
+- OSPF full adjacency inside all three regions.
+- iBGP inside each region.
+- A ring between the three regions.
+- A second, redundant inter-region path per boundary.
 
-Two real issues surfaced before the design was reverted:
+The final audit confirmed the six intra-region OSPF adjacencies are all `Full`.
 
-1. **Live-config RT-export drift** on 9 of 12 `vrf bgp` instances — the
-   export RT had drifted to the router's own RD instead of the shared RT.
-   The on-disk `frr.conf` files were already correct; only the live
-   `vtysh` state had drifted.
-2. **LDP crossing AS boundaries.** The on-disk config enabled `mpls ldp`
-   and put the ring transit subnet into OSPF area 0 on `eth2` (the
-   inter-AS link) as well as `eth1` — so OSPF/LDP formed adjacencies
-   across AS boundaries instead of staying intra-region-only, violating
-   the Option B rule that no shared LSP should cross an AS boundary.
+---
 
-Rather than debug forward from a broken state, reverted to the Week 3
-verified baseline (OSPF/eBGP/IPsec ring, no VPNv4) and restarted with a
-narrower design.
+## 4. Week 3 — eBGP ring and IPsec
 
-### Restart: single-VRF `CUST-A` pilot
+The routing fabric was extended with:
 
-Single VRF `CUST-A` (RD `65001:100` on r1-1, `65001:200` on r1-2, shared RT
-`65001:100`), piloted on just r1-1/r1-2 — same AS, existing iBGP peers —
-before deciding whether to extend across regions. Host MPLS kernel support
-confirmed present (`mpls_router`/`mpls_iptunnel` load cleanly,
-`net.mpls.platform_labels` already `100000`).
+- eBGP between regions around the primary ring.
+- Additional eBGP sessions on the redundant links.
+- strongSwan sidecars attached with `network-mode: container:<router>`.
+- IKEv2/PSK transport-mode IPsec on the three primary inter-region links.
 
-**Debugging notes, in order encountered:**
+### 4.1 IPsec verification
 
-- Applied the first round of config changes with `docker restart` on
-  r1-1/r1-2 — broke intra-region OSPF/connectivity on both nodes. Root
-  cause: `docker restart` only re-manages Docker's own default `eth0`
-  (bridge) interface, not the `eth1`/`eth2` veth links Containerlab
-  manually injects into each container's netns at deploy time — those
-  links were gone entirely after restart. Fix going forward:
-  `containerlab deploy --reconfigure` for any change, never `docker
-  restart`, on Containerlab-managed nodes.
-- The `CUST-A` VRF kernel device (`ip link add CUST-A type vrf`) had to be
-  created by hand, since zebra's VRF-lite backend expects the device to
-  already exist rather than creating it itself.
-- Once created, BGP VPNv4 exchange was confirmed genuinely working — both
-  `192.168.101.1/32` and `192.168.101.2/32` visible in each other's `show
-  bgp vrf CUST-A` with correct cross-node next hops — and kernel FIB/route
-  resolution was confirmed correct via `ip route get`, resolving with the
-  right MPLS label out the right interface.
-- `net.mpls.conf.<iface>.input=1` was needed on top of the platform-wide
-  sysctl but wasn't sufficient alone to fix reachability.
-- tcpdump run from the strongSwan sidecar (sharing the router's full
-  netns) confirmed the send side was fully correct — MPLS-labeled ICMP
-  genuinely left r1-1 on the wire — isolating the remaining gap to
-  receive-side label handling.
-- A later session found live containers had been sitting since Aug 8 with
-  no `eth1`/`eth2` veth links at all (confirmed via `ip -br link show` —
-  only `lo`+`eth0` on all 6 nodes) — the same Containerlab link-loss
-  failure mode as the `docker restart` issue above, but this time
-  occurring on its own between sessions. Fixed with a full `containerlab
-  destroy`+`deploy` rather than `docker exec` against the stale
-  containers.
-- Post-redeploy, the `CUST-A`/LDP config block turned out to have never
-  actually been saved to the repo's `frr.conf` files — it had only
-  existed in the previous session's live containers, wiped by the
-  destroy. Confirmed via a clean `git diff` against matching
-  container/host `cat` output. Rewrote both
-  `containerlab/frr/r1-1/frr.conf` and `r1-2/frr.conf` in full and applied
-  live with `frr-reload.py --reload`.
-- Re-testing after a fresh `destroy`+`deploy` showed the manually-created
-  VRF device and MPLS sysctls hadn't survived either — meaning the pilot
-  wasn't actually reproducible from git alone. Fixed by committing
-  `containerlab/scripts/setup-cust-a.sh`, an idempotent script that
-  recreates the VRF device and sysctls after every deploy.
-- A later apparent 100% packet-loss regression traced back to two
-  overlapping, non-forwarding causes: the veth links vanishing again
-  mid-session (root cause still not identified — `uptime` showed a
-  long-running host, but `docker inspect` showed the container's netns
-  had only existed minutes), and checking LDP/MPLS state before LDP had
-  ~10s to converge after redeploy, which reads as a phantom forwarding
-  bug if you don't wait it out.
+The three primary transit links were captured with tcpdump while testing the corresponding point-to-point path. The observed traffic was ESP rather than cleartext application/IP payloads on those protected links.
 
-### Final verification (confirmed reproducible)
+The architecture should still be described precisely: this is **transport-mode IPsec on selected transit/control-plane traffic**, not a claim that every packet in the fabric data plane is encrypted end-to-end.
 
-With the settle time accounted for and a genuinely cold redeploy:
+### 4.2 Known IPsec observations
 
-- `ip -f mpls route show` showed the correct kernel LFIB entry.
-- `ip vrf exec CUST-A ping` succeeded end-to-end with 0% packet loss.
-- Confirmed reproducible from a cold `containerlab destroy`+`deploy` plus
-  the committed `setup-cust-a.sh` script — not just working in one long
-  session.
+The strongSwan sidecars can negotiate NAT-T even though there is no separate NAT device in the lab. This is a side effect of sharing the router's complete network namespace and is not treated as a correctness failure.
 
-Control plane (BGP VPNv4 exchange), kernel FIB (`ip -f mpls route show`),
-and data plane (`ping`) were all independently checked. Config is committed
-and pushed (`containerlab/frr/r1-1/frr.conf`, `r1-2/frr.conf`,
-`containerlab/scripts/setup-cust-a.sh`).
+`containerlab/strongswan/Dockerfile` now installs tcpdump into the image so packet-capture tooling survives container recreation.
 
+---
 
-## Week 5 — Metrics pipeline & Grafana dashboard
+## 5. Week 4 — BAH 2026 buffer
 
-### Telegraf → VictoriaMetrics
+Week 4 was intentionally left as a schedule buffer around BAH 2026. Work moved directly into Week 5 rather than consuming the buffer as a dedicated implementation week.
 
-`services.victoriametrics` (single-node, 30d retention, loopback-only) +
-`services.telegraf`, both host-level NixOS services — not part of the
-containerlab topology itself.
+---
 
-Step 1 scope: BGP peer state only, via
-`containerlab/scripts/metrics/collect-bgp-summary.sh` — `docker exec`s
-`vtysh show bgp ipv4 unicast summary json` against all 6 ring routers,
-emits one influx line-protocol point per peer
-(`frr_bgp_peer,router=...,region=...,peer=... up=..,pfx_rcvd=..,msg_rcvd=..`).
+## 6. Week 5 — MPLS/VPNv4 segmentation
 
-Confirmed working end-to-end: querying VM's Prometheus-compatible API
-(`frr_bgp_peer_up`) returns all 12 ring peers with real peer IPs and
-`up=1` once containerlab is actually deployed. (An earlier check showed
-`peer=unknown, up=0` for every router — that's the collector's own
-fallback branch firing because the lab wasn't deployed at the time, not a
-bug in the collector itself.)
+### 6.1 Original design: full red/blue Inter-AS Option B
 
-OSPF, LDP/VPNv4 VRF state, interface counters, and IPsec tunnel status are
-deliberately out of scope for this collector — separate `inputs.exec`
-entries to add later, kept independent so a bad `jq` path in one collector
-can't take down a working one.
+The original Week 5 target was a full Inter-AS MPLS VPN Option B implementation:
 
-### Grafana
+- `red` and `blue` VRFs in all three regions.
+- Per-router route distinguishers.
+- Shared route-targets per customer VRF.
+- LDP scoped to regional boundaries.
+- Dummy customer loopbacks for segmentation verification.
 
-`services.grafana` added to the same module, provisioned entirely
-declaratively: a VictoriaMetrics datasource (`type = "prometheus"`, since
-VM speaks the Prometheus query API; explicit `uid = "victoriametrics"`)
-plus a file-provisioned dashboard
-(`grafana/dashboards/topology-health.json`, wired in via
-`environment.etc` + `provision.dashboards.settings.providers`).
+That first attempt surfaced two genuine configuration/design problems:
 
-Dashboard: Ring BGP Health stat (% peers up), Peer Status table, Prefixes
-Received per Peer and BGP Messages Received (rate/5m) time series.
-Confirmed rendering real data — 100% health, 12 peers, live time series —
-once the lab was up.
+1. **Live-config RT export drift.** On 9 of 12 `vrf bgp` instances, the running configuration had the router's own RD in the export path instead of the shared per-VRF RT. The repository `frr.conf` files were not the source of that drift; the live `vtysh` state was.
+2. **LDP crossed AS boundaries.** LDP and OSPF were initially placed on the inter-AS transit interfaces, allowing the AS boundaries to participate in a shared OSPF/LDP domain. That violates the intended Option B separation model.
 
-NixOS 26.05 requires an explicit
-`services.grafana.settings.security.secret_key` (no default value
-anymore). Generated on first boot via a `preStart` script writing a random
-32-byte hex key to `/var/lib/grafana/secret_key` (`chmod 600`), rather
-than hardcoding a static key or standing up sops-nix seven weeks early for
-one value — the sops-nix migration is a one-line swap when Week 12
-arrives.
+Instead of layering more debugging on top of that state, the design was reverted to the verified routing/IPsec baseline and restarted with a narrower, testable pilot.
 
-### Incidents hit standing this up
+The full decision record remains in `docs/decisions/0001-option-b-defer.md`.
 
-1. **Stale `/etc/nixos`.** Turned out to be a separate, non-symlinked
-   flake copy untouched since Jul 15 (predating `~/sparebox` becoming the
-   single source of truth). A bare `nixos-rebuild switch` (no `--flake`
-   flag) silently built from `/etc/nixos` instead — telegraf/
-   VictoriaMetrics/grafana all vanished from the built generation with no
-   error, since they simply weren't declared there. Always rebuild with
-   `nixos-rebuild switch --flake .#sparebox` (see `docs/runbook.md`).
-2. **Grafana datasource provisioning crash loop.** Pinning an explicit
-   `uid` onto a datasource after one with an auto-generated uid already
-   existed under the same name caused a boot-time crash loop
-   (`Datasource provisioning error: data source not found`) — a known
-   Grafana limitation (provisioning can create-with-uid or
-   update-matching-uid, not retroactively rewrite an existing uid), not a
-   config mistake. Fixed by clearing Grafana's state and letting it
-   re-provision clean.
-3. **`/var/lib/grafana` is Nix-activation-managed, not
-   systemctl-managed.** Manually `rm -rf`'ing it and restarting via bare
-   `systemctl start` broke Grafana (`CHDIR` failure) — `conf`/`tools`
-   under that directory are symlinks into the nix store set up by NixOS
-   activation, not by the grafana process itself. Only
-   `nixos-rebuild switch` correctly regenerates that structure.
+### 6.2 Delivered design: single-VRF `CUST-A` pilot
 
-## Deferred, not dropped: full red/blue Inter-AS Option B
+The delivered VPNv4 milestone is a single customer VRF on the r1 pair:
 
-See `docs/decisions/0001-option-b-defer.md` for the full reasoning. Short
-version: given outreach now includes Equinix-tier edge/CDN companies, the
-full design isn't descoped — it's an optional, non-blocking parallel track
-startable any time from Week 7 onward, structured so it never gates a
-Phase 2 or Phase 3 ship date. Phase 1 ships on schedule at Week 6 with the
-single-VRF `CUST-A` pilot as the delivered VPNv4 milestone.
+- `r1-1` CUST-A address: `192.168.101.1/32`
+- `r1-2` CUST-A address: `192.168.101.2/32`
+- VRF table: `100`
+- `r1-1` RD: `65001:100`
+- `r1-2` RD: `65001:200`
+- Shared import/export RT: `65001:100`
+- VPNv4 exchange: existing r1 iBGP session
+- MPLS/LDP: only the r1 pair for the pilot
 
-## Operational lessons (carried into Phase 2)
+The asymmetric RDs are intentional; the common RT is what allows the two customer routes to be imported into the same VPN routing context.
 
-1. Containerlab-injected veth links (`eth1`/`eth2`) don't survive `docker
-   restart` and can vanish on their own between sessions. Check `ip -br
-   link show` at the start of any session before debugging anything else.
-2. Anything set up by hand against a running container doesn't persist and
-   isn't reproducible unless it's scripted and committed — cost real time
-   twice in Week 5. The fix pattern (script it, commit it, test from a
-   cold redeploy) is exactly the discipline Flux/GitOps enforces
-   structurally in Phase 2.
-3. LDP — and likely other convergence-based systems later, e.g. Flux
-   reconciliation — needs settle time after a redeploy before a negative
-   test result can be trusted.
+### 6.3 Reproducibility fix: `setup-cust-a.sh`
+
+A manually-created Linux VRF device does not survive Containerlab container recreation. The final repository therefore includes:
+
+`containerlab/scripts/setup-cust-a.sh`
+
+The script is idempotent and performs the post-deploy kernel setup required by the pilot:
+
+- creates `CUST-A` as a Linux VRF with table `100` if absent;
+- brings the VRF device up;
+- installs the local `/32` if absent;
+- enables MPLS input processing on `eth1`;
+- sets `net.mpls.platform_labels=100000`;
+- sets `net.ipv4.raw_l3mdev_accept=1`.
+
+The script is expected to be run after a fresh Containerlab deployment.
+
+### 6.4 Debugging lessons from the pilot
+
+Several failures were initially misread as routing bugs but were actually lifecycle or verification issues:
+
+- Using `docker restart` on Containerlab-managed FRR nodes removed the manually injected `eth1`/`eth2` veth links. The correct lifecycle operation is a Containerlab redeploy/reconfigure, not a Docker restart.
+- Live VRF state created with `docker exec` is ephemeral unless recreated by a committed script.
+- After a cold redeploy, LDP needs settling time before MPLS forwarding state should be judged.
+- A stale set of containers was found without the expected `eth1`/`eth2` links; a full `containerlab destroy` followed by `deploy` restored the topology.
+- The first working CUST-A forwarding checks were performed from the correct VRF context. A plain `ping 192.168.101.2` from the default VRF was not a valid CUST-A functional test and produced a misleading 100% loss result.
+
+### 6.5 Final CUST-A verification
+
+After a cold redeploy plus the committed setup script, both the control and data planes were verified independently:
+
+```text
+r1-1 CUST-A → 192.168.101.2: 5/5 replies, 0% packet loss
+r1-2 CUST-A → 192.168.101.1: 5/5 replies, 0% packet loss
+```
+
+Kernel route resolution showed MPLS encapsulation through the CUST-A table, for example:
+
+```text
+192.168.101.2 encap mpls 144 via 10.1.0.2 dev eth1 table 100
+192.168.101.1 encap mpls 144 via 10.1.0.1 dev eth1 table 100
+```
+
+LDP was operational on the r1 pair and the BGP VPN label was present. The underlay loopbacks also remained reachable in both directions.
+
+The final conclusion is therefore:
+
+> **The CUST-A VPNv4/MPLS pilot is functional and reproducible from the repository state.**
+
+It is a single-VRF pilot, not the original full red/blue Inter-AS Option B design.
+
+---
+
+## 7. Week 5 — Metrics pipeline and Grafana
+
+Observability is implemented as host-level NixOS services, separate from the Containerlab routing nodes.
+
+### 7.1 Telegraf → VictoriaMetrics
+
+Current implementation:
+
+- VictoriaMetrics single-node.
+- Retention: `30d`.
+- Listen address: `127.0.0.1:8428`.
+- Telegraf interval/flush interval: `15s`.
+- Influx line protocol is sent to VictoriaMetrics.
+- The current collector is intentionally **BGP-only**.
+
+The collector at `containerlab/scripts/metrics/collect-bgp-summary.sh` reads `show bgp ipv4 unicast summary json` from the six FRR routers and emits peer-level metrics.
+
+The current dashboard/collector therefore covers the 12 inter-region ring peers, while the routing fabric itself has 18 IPv4 BGP sessions including the six intra-region iBGP sessions.
+
+OSPF state, LDP/VPNv4 state, interface counters and IPsec state are deliberately separate future collectors rather than being mixed into the BGP collector.
+
+### 7.2 Grafana
+
+Grafana is provisioned declaratively with:
+
+- VictoriaMetrics as the Prometheus-compatible datasource.
+- datasource UID `victoriametrics`.
+- dashboard provider `sparebox`.
+- dashboard file `grafana/dashboards/topology-health.json`.
+- HTTP bind `192.168.1.35:3000`.
+
+Final host verification on 2026-09-17 returned:
+
+```json
+{
+  "database": "ok",
+  "version": "13.0.7",
+  "commit": "NA"
+}
+```
+
+The socket check also confirmed Grafana listening on `192.168.1.35:3000`.
+
+NixOS activation creates the Grafana state layout, including the generated secret key file. Manual deletion/recreation of `/var/lib/grafana` is therefore not a substitute for rebuilding the NixOS generation.
+
+### 7.3 Observability limitation
+
+Phase 1 should not be described as having full-fabric observability. The shipped pipeline is a deliberately narrow, working BGP peer-state collector with Grafana visualization. Expanding the metric surface is Phase 2/3 work.
+
+---
+
+## 8. Week 6 — Automated chaos and failover benchmarking
+
+Week 6 turned the redundant fabric into a measurable failure-injection system.
+
+### 8.1 Chaos tooling
+
+The `containerlab/chaos/` directory now contains:
+
+| File | Purpose |
+|---|---|
+| `inject.sh` | Applies and rolls back failure conditions. |
+| `probe.sh` | Samples reachability and routing state. |
+| `trial.sh` | Runs repeatable fault trials and records metrics. |
+| `analyze.sh` | Calculates route-change, packet-loss, lag and heal statistics. |
+| `fabric.env` | Shared fabric/test parameters. |
+| `results/week6-benchmark.csv` | Formal Week 6 benchmark evidence. |
+| `benchmark/tunnel-benchmark.sh` | Isolated strongSwan/WireGuard throughput test. |
+| `results/tunnel-benchmark.csv` | Tunnel benchmark evidence. |
+
+`analyze.sh` uses nearest-rank percentiles. Its main metrics are:
+
+- `route_change_s`: time from fault injection until the kernel selects a different route;
+- `packet_loss_s`: observed ICMP outage caused by the fault;
+- `loss_detection_s`: time from injection until first observed packet loss;
+- `heal_route_s`: time after healing until the original route returns.
+
+For redundant link-down tests, `route_change_s` is the primary failover metric because a correct alternate route can prevent any packet loss at all.
+
+### 8.2 Formal dataset
+
+`containerlab/chaos/results/week6-benchmark.csv` contains **81 lines: one header plus 80 formal trial rows**.
+
+The formal dataset consists of:
+
+- 20 `link-down` trials for `link12`;
+- 20 `link-down` trials for `link23`;
+- 20 `link-down` trials for `link31`;
+- 20 `link-blackhole` trials.
+
+Other fault classes were exercised as smoke tests rather than mixed into the formal 80-trial statistical dataset because their failure-detection semantics are materially different.
+
+### 8.3 Link-down results
+
+| Target | Trials | Route-change p50 | Route-change p95 | Max | Path changes | Zero-loss trials |
+|---|---:|---:|---:|---:|---:|---:|
+| `link12` | 20 | 53 ms | 92 ms | 97.662 ms | 20/20 | 20/20 |
+| `link23` | 20 | 51 ms | 88 ms | 88.817 ms | 20/20 | 20/20 |
+| `link31` | 20 | 56 ms | 91 ms | 95.658 ms | 20/20 | 20/20 |
+| **All link-down** | **60** | **54.6 ms** | **90.6 ms** | **97.662 ms** | **60/60** | **60/60** |
+
+Interpretation: the primary-link failures were detected and rerouted in tens of milliseconds, and the probe observed no ICMP packet loss in the formal link-down dataset.
+
+These numbers are measurements from this Containerlab/NixOS environment, not a general claim about OSPF/BGP convergence on arbitrary hardware or networks.
+
+### 8.4 Link-blackhole result
+
+The formal blackhole set contains 20 trials against `link12`.
+
+Observed result:
+
+- no route change during the blackhole condition;
+- all 20 trials recorded packet loss;
+- packet-loss interval p50: **5.107 s**;
+- packet-loss interval p95: **5.128 s**.
+
+This is an important distinction from link-down. Removing the link gives the routing protocols a concrete failure signal; blackholing traffic can leave the control plane believing the path is still available. The benchmark intentionally preserves that distinction rather than collapsing both cases into one “failover time” metric.
+
+### 8.5 Smoke-only scenarios
+
+The Week 6 injector also supports:
+
+- `node-down`
+- `bgp-freeze`
+- `ipsec-down`
+- `ipsec-freeze`
+
+These were kept as smoke coverage rather than pooled into the 80-trial formal dataset.
+
+Two important reasons are documented by the experiments:
+
+- A BGP freeze that lasts only for the trial window does not exceed the configured BGP hold timer, so it is not expected to trigger immediate path withdrawal.
+- The measured loopback probe does not traverse the transport-mode IPsec selectors used by the fabric, so taking those IPsec SAs down does not necessarily change the measured loopback route.
+
+These are design/measurement semantics, not evidence that the injector is broken.
+
+---
+
+## 9. Week 6 — strongSwan vs WireGuard benchmark
+
+The tunnel benchmark uses two isolated privileged Debian containers on a dedicated Docker bridge so its results are not mixed with the Containerlab routing fabric.
+
+### 9.1 Test method
+
+- Underlay network: `10.250.250.0/24`.
+- Endpoint A: `10.250.250.2`.
+- Endpoint B: `10.250.250.3`.
+- Tunnel endpoints: `10.250.0.1` and `10.250.0.2`.
+- Throughput tool: `iperf3` for 10 seconds.
+- Connectivity/latency checks: ping.
+- strongSwan: IKEv2 PSK, AES-256/SHA-256 with MODP-2048; ESP AES-256/SHA-256.
+- WireGuard: kernel module plus `wg-quick`.
+- The script cleans up its containers and network when complete.
+
+### 9.2 Measured results
+
+| Mode | Throughput | Avg RTT | Packet loss |
+|---|---:|---:|---:|
+| Baseline | 27.481 Gbit/s | — | 0% |
+| strongSwan | 506.792 Mbit/s | 0.182 ms | 0% |
+| WireGuard | 1.667 Gbit/s | 0.707 ms | 0% |
+
+The measured WireGuard throughput was approximately **3.29×** the measured strongSwan throughput in this specific benchmark environment.
+
+Relative to the same baseline, the measured throughputs were approximately:
+
+- strongSwan: **1.84% of baseline**;
+- WireGuard: **6.07% of baseline**.
+
+These figures are environment-specific observations from the benchmark script; they should not be presented as universal protocol-performance guarantees.
+
+The successful run also verified an established strongSwan IKEv2/ESP SA and a recent WireGuard handshake with non-zero transfer counters.
+
+---
+
+## 10. Final control-plane verification
+
+The final audit of the live Containerlab deployment confirmed:
+
+### OSPF
+
+- 6/6 routers have their intra-region OSPF neighbor in `Full` state.
+
+### BGP
+
+- 3 established IPv4-unicast peers per router.
+- 18/18 IPv4-unicast BGP sessions established.
+- 12 of those are inter-region eBGP ring peers monitored by the current BGP metrics collector.
+
+### MPLS/LDP
+
+- LDP is operational only on the intended r1 pair.
+- The CUST-A VPN route resolves through MPLS label 144 in the Linux forwarding table.
+- The full fabric is not represented as one shared LDP domain.
+
+### Interfaces
+
+- `eth1`, `eth2` and `eth3` are present and up on the six FRR routers after a clean Containerlab deployment.
+
+### IPsec
+
+- strongSwan IKEv2/ESP SAs are established on the six sidecars.
+- The fabric uses transport mode for the selected protected traffic.
+
+### CUST-A
+
+- `CUST-A` VRF exists with table `100` on `r1-1` and `r1-2`.
+- Local and imported `/32` routes are installed.
+- Correct CUST-A VRF pings succeed in both directions with 0% packet loss.
+
+### Observability
+
+- Telegraf active.
+- Grafana active and reachable on `192.168.1.35:3000`.
+- VictoriaMetrics healthy on `127.0.0.1:8428`.
+
+### NixOS reproducibility
+
+The final audit also passed:
+
+```bash
+nix flake check --no-build
+sudo nixos-rebuild dry-build --flake .#sparebox
+```
+
+The committed chaos shell scripts pass `bash -n` syntax checks.
+
+---
+
+## 11. NixOS and Containerlab operational notes
+
+These are important because several apparently serious failures during Phase 1 were lifecycle issues rather than routing failures.
+
+### 11.1 Use Containerlab for Containerlab lifecycle
+
+Do not use `docker restart` on the FRR routers when they are managed by Containerlab. Containerlab creates `eth1`/`eth2`/`eth3` links inside the router namespaces; Docker's normal container restart lifecycle does not recreate those manually injected veths.
+
+For a clean rebuild:
+
+```bash
+sudo containerlab destroy -t containerlab/topology.clab.yml --cleanup
+sudo containerlab deploy -t containerlab/topology.clab.yml
+sudo ./containerlab/scripts/setup-cust-a.sh
+```
+
+Allow LDP/BGP/other control-plane state to settle before treating a transient negative result as a fabric regression.
+
+### 11.2 Always use the repository flake
+
+Use:
+
+```bash
+sudo nixos-rebuild switch --flake .#sparebox
+```
+
+not a bare `nixos-rebuild switch`.
+
+The host previously had a separate stale `/etc/nixos` copy. Using the bare command built the wrong configuration generation without producing an obvious error because that older flake simply did not declare the Phase 1 services.
+
+### 11.3 NixOS module-loader warning
+
+Containerlab may report a warning around `/lib/modules/<kernel>/modules.dep` on this NixOS host. The host's kernel-module layout does not mirror a conventional `/lib/modules` installation. This warning is not by itself evidence that the routing fabric is unhealthy; verify the actual interfaces, services and protocol state before treating it as a fault.
+
+### 11.4 Other non-fatal lifecycle warnings
+
+Containerlab may also print `/etc/hosts: read-only file system` while operating on generated containers. The warning should be interpreted alongside the actual `containerlab inspect` state rather than treated as proof of a failed deployment.
+
+---
+
+## 12. Repository structure relevant to Phase 1
+
+```text
+.
+├── flake.nix
+├── containerlab/
+│   ├── topology.clab.yml
+│   ├── frr/
+│   │   ├── r1-1/
+│   │   ├── r1-2/
+│   │   ├── r2-1/
+│   │   ├── r2-2/
+│   │   ├── r3-1/
+│   │   └── r3-2/
+│   ├── strongswan/
+│   │   └── r1-1 ... r3-2/
+│   ├── scripts/
+│   │   ├── setup-cust-a.sh
+│   │   └── metrics/collect-bgp-summary.sh
+│   └── chaos/
+│       ├── fabric.env
+│       ├── inject.sh
+│       ├── probe.sh
+│       ├── trial.sh
+│       ├── analyze.sh
+│       ├── benchmark/tunnel-benchmark.sh
+│       └── results/
+├── modules/
+│   └── observability.nix
+├── grafana/
+│   └── dashboards/topology-health.json
+└── docs/
+    ├── phase1-progress.md
+    ├── runbook.md
+    └── decisions/0001-option-b-defer.md
+```
+
+The repository is the source of truth. Live container state, generated Containerlab artifacts, and hand-entered `docker exec` configuration are not substitutes for committed configuration.
+
+---
+
+## 13. Deferred scope and explicit non-goals
+
+### Deferred: full red/blue Inter-AS Option B
+
+The original full `red`/`blue` design remains a separate, optional track. It was intentionally not allowed to block Phase 1 completion.
+
+It can be revisited after Week 6 using the decision and lessons already captured, but Phase 1's shipped VPNv4 milestone is the verified single-VRF `CUST-A` pilot.
+
+### Not claimed by Phase 1
+
+Phase 1 should **not** be described as having:
+
+- a full red/blue Inter-AS Option B implementation;
+- a fabric-wide shared LDP domain;
+- full-fabric encryption of every data-plane packet;
+- full OSPF/LDP/interface/IPsec telemetry in VictoriaMetrics;
+- production-grade multi-node VictoriaMetrics/Grafana HA;
+- Kubernetes/k3s/Flux/Chaos Mesh integration.
+
+Those are later-phase capabilities or deliberately deferred work.
+
+---
+
+## 14. Phase 2 handoff
+
+The Phase 1 foundation is now stable enough that Phase 2 can build on it rather than continuing to rework the base fabric.
+
+The main handoff principles are:
+
+1. **Keep the repository declarative.** New host/service state belongs in the Nix flake; new lab state belongs in committed Containerlab/FRR/strongSwan configuration; ephemeral kernel setup must have a script like `setup-cust-a.sh`.
+2. **Keep routing-domain boundaries explicit.** OSPF is intra-region. The delivered LDP scope is intentionally narrow. Do not reintroduce cross-AS OSPF/LDP accidentally while extending VPNs.
+3. **Preserve measurement semantics.** Link-down, blackhole, BGP-timer and IPsec-selector tests measure different failure modes and should not be merged into a single convergence number.
+4. **Treat cold-redeploy verification as part of correctness.** A configuration that only works in one live container session is not considered reproducible.
+5. **Expand observability independently.** Add OSPF/LDP/VPNv4/interface/IPsec collectors as separate inputs so a parser error in one signal does not remove the working BGP pipeline.
+
+---
+
+## 15. Final Phase 1 evidence summary
+
+| Area | Final status | Primary evidence |
+|---|---|---|
+| 3-region routing fabric | Complete | `containerlab/topology.clab.yml`, live protocol checks |
+| OSPF | Complete | 6/6 intra-region adjacencies `Full` |
+| BGP | Complete | 18/18 IPv4-unicast sessions established |
+| Primary + redundant ring | Complete | 9 inter/intra topology links present |
+| strongSwan/IPsec | Complete | IKEv2/ESP SAs established; transit capture evidence |
+| CUST-A VPNv4/MPLS pilot | Complete | bilateral VRF ping + MPLS route resolution |
+| BGP observability | Complete | Telegraf → VictoriaMetrics → Grafana |
+| Link-down benchmark | Complete | 60 formal trials; p50 54.6 ms, p95 90.6 ms |
+| Link-blackhole benchmark | Complete | 20 formal trials; p50 loss interval 5.107 s |
+| Tunnel benchmark | Complete | baseline/strongSwan/WireGuard CSV |
+| Cold-redeploy reproducibility | Complete | committed setup script + fresh deploy validation |
+| Phase 1 documentation | Complete | this document + runbook + ADR |
+
+**Phase 1 is complete.** The next work should extend the platform from this verified routing/observability/chaos foundation rather than treating the Phase 1 fabric as unfinished.
