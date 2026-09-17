@@ -120,3 +120,8 @@ topology:
     - endpoints: ["r1-2:eth2", "r2-1:eth2"]
     - endpoints: ["r2-2:eth2", "r3-1:eth2"]
     - endpoints: ["r3-2:eth2", "r1-1:eth2"]
+
+    # redundant inter-region eBGP + IPsec links
+    - endpoints: ["r1-1:eth3", "r2-2:eth3"]
+    - endpoints: ["r2-1:eth3", "r3-2:eth3"]
+    - endpoints: ["r3-1:eth3", "r1-2:eth3"]

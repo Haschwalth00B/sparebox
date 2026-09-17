@@ -39,15 +39,18 @@ NODES=(r1-1 r1-2 r2-1 r2-2 r3-1 r3-2)
 
 # link name -> "nodeA:ifA nodeB:ifB"
 declare -A LINKS=(
-  [link12]="r1-2:eth2 r2-1:eth2"     # region1 <-> region2 transit (eBGP + IPsec)
-  [link23]="r2-2:eth2 r3-1:eth2"     # region2 <-> region3 transit
-  [link31]="r3-2:eth2 r1-1:eth2"     # region3 <-> region1 transit
+  [link12]="r1-2:eth2 r2-1:eth2"     # region1 <-> region2 primary
+  [link23]="r2-2:eth2 r3-1:eth2"     # region2 <-> region3 primary
+  [link31]="r3-2:eth2 r1-1:eth2"     # region3 <-> region1 primary
+  [link14]="r1-1:eth3 r2-2:eth3"     # region1 <-> region2 redundant
+  [link25]="r2-1:eth3 r3-2:eth3"     # region2 <-> region3 redundant
+  [link35]="r3-1:eth3 r1-2:eth3"     # region3 <-> region1 redundant
   [link-r1]="r1-1:eth1 r1-2:eth1"    # region1 intra (OSPF + iBGP + LDP)
   [link-r2]="r2-1:eth1 r2-2:eth1"    # region2 intra
   [link-r3]="r3-1:eth1 r3-2:eth1"    # region3 intra
 )
 
-TRANSIT_LINKS=(link12 link23 link31)
+TRANSIT_LINKS=(link12 link23 link31 link14 link25 link35)
 
 # router -> loopback, used by the baseline reachability gate
 declare -A LOOPBACK=(
@@ -112,7 +115,7 @@ preflight() {
     local links
     links=$(dex "$n" ip -br link show 2>/dev/null | awk '{print $1}' | cut -d@ -f1 | tr '
 ' ' ')
-    for want in eth1 eth2; do
+    for want in eth1 eth2 eth3; do
       grep -qw "$want" <<<"$links" || {
         echo "  MISSING: $n has no $want (links: $links)"
         rc=1
@@ -324,9 +327,10 @@ fail_node_down() {
 
   is_node "$node" || die "unknown node '$node'"
 
-  log "FAIL node-down $node  (eth1 + eth2 admin-down)"
+  log "FAIL node-down $node  (eth1 + eth2 + eth3 admin-down)"
   dex "$node" ip link set eth1 down
   dex "$node" ip link set eth2 down
+  dex "$node" ip link set eth3 down
 
   record node-down "$node"
 }
@@ -339,6 +343,7 @@ heal_node_down() {
   log "HEAL node-down $node"
   dex "$node" ip link set eth1 up
   dex "$node" ip link set eth2 up
+  dex "$node" ip link set eth3 up
 
   forget node-down "$node"
 }
@@ -600,7 +605,7 @@ show_status() {
   for n in "${NODES[@]}"; do
     printf '  %s: %s\n' "$n" \
       "$(dex "$n" ip -br link show 2>/dev/null |
-          awk '$1 ~ /^eth[12]/ {printf "%s=%s ", $1, $2}')"
+          awk '$1 ~ /^eth[123]/ {printf "%s=%s ", $1, $2}')"
   done
 
   echo
@@ -609,7 +614,7 @@ show_status() {
   local found=0
 
   for n in "${NODES[@]}"; do
-    for i in eth1 eth2; do
+    for i in eth1 eth2 eth3; do
       if sdex "$n" tc qdisc show dev "$i" 2>/dev/null | grep -q netem; then
         echo "  $n $i: netem active"
         found=1

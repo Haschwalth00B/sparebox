@@ -1,0 +1,4 @@
+timestamp,protocol,throughput_bps,avg_rtt_ms,packet_loss_percent
+2026-09-17T14:55:38Z,baseline,27480849233,,0
+2026-09-17T14:55:38Z,strongswan,506792198,0.182,0
+2026-09-17T14:55:38Z,wireguard,1667057968,0.707,0
