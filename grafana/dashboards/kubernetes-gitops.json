@@ -1,7 +1,7 @@
 {
   "id": null,
   "uid": "sparebox-kubernetes-gitops",
-  "title": "sparebox — Kubernetes & GitOps",
+  "title": "sparebox \u2014 Kubernetes & GitOps",
   "tags": [
     "sparebox",
     "kubernetes",
@@ -636,6 +636,200 @@
         "tooltip": {
           "mode": "multi",
           "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 15,
+      "title": "Node CPU Usage",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 40
+      },
+      "targets": [
+        {
+          "expr": "100 * rate(container_cpu_usage_seconds_total{id=\"/\"}[5m]) / on(instance,job) machine_cpu_cores",
+          "legendFormat": "{{instance}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 16,
+      "title": "Node Memory Usage",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 40
+      },
+      "targets": [
+        {
+          "expr": "100 * container_memory_usage_bytes{id=\"/\"} / on(instance,job) machine_memory_bytes",
+          "legendFormat": "{{instance}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 17,
+      "title": "Top Containers by CPU",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 48
+      },
+      "targets": [
+        {
+          "expr": "topk(\n  10,\n  sum by (namespace, pod, container) (\n    rate(container_cpu_usage_seconds_total{container!=\"\",pod!=\"\"}[5m])\n  )\n)",
+          "legendFormat": "{{namespace}} / {{pod}} / {{container}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "cores"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right"
+        }
+      }
+    },
+    {
+      "id": 18,
+      "title": "Top Containers by Memory",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 48
+      },
+      "targets": [
+        {
+          "expr": "topk(\n  10,\n  sum by (namespace, pod, container) (\n    container_memory_working_set_bytes{container!=\"\",pod!=\"\"}\n  )\n)",
+          "legendFormat": "{{namespace}} / {{pod}} / {{container}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right"
+        }
+      }
+    },
+    {
+      "id": 19,
+      "title": "Container Network Traffic",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 56
+      },
+      "targets": [
+        {
+          "expr": "sum by (namespace, pod, container) (\n  rate(container_network_receive_bytes_total{\n    pod!=\"\",\n    interface=\"eth0\"\n  }[5m])\n)",
+          "legendFormat": "RX {{namespace}} / {{pod}} / {{container}}",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (namespace, pod, container) (\n  rate(container_network_transmit_bytes_total{\n    pod!=\"\",\n    interface=\"eth0\"\n  }[5m])\n)",
+          "legendFormat": "TX {{namespace}} / {{pod}} / {{container}}",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right"
+        }
+      }
+    },
+    {
+      "id": 20,
+      "title": "Container Filesystem I/O",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 56
+      },
+      "targets": [
+        {
+          "expr": "topk(\n  10,\n  sum by (namespace, pod, container) (\n    rate(container_fs_reads_bytes_total{\n      container!=\"\",\n      pod!=\"\"\n    }[5m])\n  )\n)",
+          "legendFormat": "Read {{namespace}} / {{pod}} / {{container}}",
+          "refId": "A"
+        },
+        {
+          "expr": "topk(\n  10,\n  sum by (namespace, pod, container) (\n    rate(container_fs_writes_bytes_total{\n      container!=\"\",\n      pod!=\"\"\n    }[5m])\n  )\n)",
+          "legendFormat": "Write {{namespace}} / {{pod}} / {{container}}",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right"
         }
       }
     }
