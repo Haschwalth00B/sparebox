@@ -1,0 +1,56 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vmagent-config
+  namespace: observability
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      scrape_timeout: 10s
+
+    scrape_configs:
+
+      # Kubernetes API server
+      - job_name: kubernetes-apiserver
+        scheme: https
+        static_configs:
+          - targets:
+              - kubernetes.default.svc:443
+
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+
+      # Flux controllers
+      - job_name: flux-controllers
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - flux-system
+
+        relabel_configs:
+          - source_labels:
+              - __meta_kubernetes_pod_container_port_name
+            action: keep
+            regex: http-prom
+
+          - source_labels:
+              - __meta_kubernetes_pod_label_app
+            target_label: app
+
+          - source_labels:
+              - __meta_kubernetes_pod_name
+            target_label: pod
+
+          - source_labels:
+              - __meta_kubernetes_namespace
+            target_label: namespace
+
+      # vmagent itself
+      - job_name: vmagent
+        static_configs:
+          - targets:
+              - 127.0.0.1:8429

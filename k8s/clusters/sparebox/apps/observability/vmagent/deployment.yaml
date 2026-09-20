@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vmagent
+  namespace: observability
+  labels:
+    app: vmagent
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: vmagent
+
+  template:
+    metadata:
+      labels:
+        app: vmagent
+
+    spec:
+      serviceAccountName: vmagent
+
+      # Allows vmagent to reach the host-only VictoriaMetrics
+      # at 127.0.0.1:8428 without exposing VictoriaMetrics
+      # on the LAN.
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+
+      containers:
+        - name: vmagent
+          image: victoriametrics/vmagent:v1.152.0
+
+          args:
+            - -promscrape.config=/etc/vmagent/prometheus.yml
+            - -remoteWrite.url=http://127.0.0.1:8428/api/v1/write
+            - -httpListenAddr=127.0.0.1:8429
+
+          ports:
+            - name: http
+              containerPort: 8429
+
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+
+          volumeMounts:
+            - name: config
+              mountPath: /etc/vmagent
+              readOnly: true
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8429
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 10
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8429
+              scheme: HTTP
+            initialDelaySeconds: 15
+            periodSeconds: 20
+
+      volumes:
+        - name: config
+          configMap:
+            name: vmagent-config
