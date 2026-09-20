@@ -22,6 +22,14 @@ rules:
       - list
       - watch
 
+  - apiGroups:
+      - ""
+    resources:
+      - nodes/metrics
+      - nodes/stats
+    verbs:
+      - get
+
   - nonResourceURLs:
       - /metrics
     verbs:
