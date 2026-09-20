@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sparebox-web
+  namespace: gitops-test
+  labels:
+    app: sparebox-web
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sparebox-web
+  template:
+    metadata:
+      labels:
+        app: sparebox-web
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          ports:
+            - name: http
+              containerPort: 80
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
