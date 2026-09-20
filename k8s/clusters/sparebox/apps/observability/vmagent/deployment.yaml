@@ -54,6 +54,7 @@ spec:
 
           readinessProbe:
             httpGet:
+              host: 127.0.0.1
               path: /health
               port: 8429
               scheme: HTTP
@@ -62,6 +63,7 @@ spec:
 
           livenessProbe:
             httpGet:
+              host: 127.0.0.1
               path: /health
               port: 8429
               scheme: HTTP
