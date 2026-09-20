@@ -14,6 +14,7 @@ data:
       # Kubernetes API server
       - job_name: kubernetes-apiserver
         scheme: https
+
         static_configs:
           - targets:
               - kubernetes.default.svc:443
@@ -50,27 +51,41 @@ data:
             target_label: namespace
 
       # Kubernetes object/state metrics
+      #
+      # kube-state-metrics exposes Kubernetes object state such as:
+      # pods, deployments, replicasets, nodes, namespaces, services, etc.
+      #
+      # Discover the KSM pod directly instead of going through
+      # Service/Endpoints discovery.
       - job_name: kube-state-metrics
         kubernetes_sd_configs:
-          - role: endpoints
+          - role: pod
             namespaces:
               names:
                 - kube-system
 
         relabel_configs:
+          # Only scrape the kube-state-metrics pod.
           - source_labels:
-              - __meta_kubernetes_service_name
+              - __meta_kubernetes_pod_label_app_kubernetes_io_name
             action: keep
             regex: kube-state-metrics
 
+          # Only scrape the metrics container port.
           - source_labels:
-              - __meta_kubernetes_endpoint_port_name
+              - __meta_kubernetes_pod_container_port_name
             action: keep
             regex: http-metrics
 
+          # Preserve the Kubernetes namespace as a metric label.
           - source_labels:
               - __meta_kubernetes_namespace
             target_label: namespace
+
+          # Preserve the KSM pod name as a metric label.
+          - source_labels:
+              - __meta_kubernetes_pod_name
+            target_label: pod
 
       # vmagent itself
       - job_name: vmagent
