@@ -105,5 +105,9 @@
 
   environment.etc."grafana/dashboards/topology-health.json".source =
     ../grafana/dashboards/topology-health.json;
+
+
+  environment.etc."grafana/dashboards/kubernetes-gitops.json".source =
+    ../grafana/dashboards/kubernetes-gitops.json;
 }
 
