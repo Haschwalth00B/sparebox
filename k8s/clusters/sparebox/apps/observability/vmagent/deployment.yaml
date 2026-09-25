@@ -33,6 +33,11 @@ spec:
         - name: vmagent
           image: victoriametrics/vmagent:v1.152.0
 
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            readOnlyRootFilesystem: true
+
           args:
             - -promscrape.config=/etc/vmagent/prometheus.yml
             - -remoteWrite.url=http://127.0.0.1:8428/api/v1/write

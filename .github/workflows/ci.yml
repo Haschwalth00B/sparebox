@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - dev
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate Sparebox
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          nix_path: nixpkgs=channel:nixos-26.05
+
+      - name: Check flake
+        run: |
+          nix flake check --show-trace
+
+      - name: Build NixOS configuration
+        run: |
+          nix build \
+            .#nixosConfigurations.sparebox.config.system.build.toplevel
+
+      - name: Install kustomize
+        uses: imranismail/setup-kustomize@v3
+        with:
+          kustomize-version: 5.8.1
+
+      - name: Render Kubernetes manifests
+        run: |
+          kustomize build k8s/clusters/sparebox \
+            > /tmp/sparebox-rendered.yaml
+
+      - name: Install kubeconform
+        run: |
+          curl -fsSL \
+            https://github.com/yannh/kubeconform/releases/download/v0.7.0/kubeconform-linux-amd64.tar.gz \
+            | tar -xz -C /tmp
+
+          sudo install \
+            -m 0755 \
+            /tmp/kubeconform \
+            /usr/local/bin/kubeconform
+
+      - name: Validate Kubernetes manifests
+        run: |
+          kubeconform \
+            -strict \
+            -ignore-missing-schemas \
+            -summary \
+            /tmp/sparebox-rendered.yaml
+
+      - name: Install kube-linter
+        run: |
+          curl -fsSL \
+            https://raw.githubusercontent.com/stackrox/kube-linter/master/install.sh \
+            | bash -s -- -b /usr/local/bin
+
+      - name: Lint Kubernetes manifests
+        run: |
+          kube-linter lint \
+            --config .kube-linter/config.yaml \
+            /tmp/sparebox-rendered.yaml
