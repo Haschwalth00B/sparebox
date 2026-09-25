@@ -67,8 +67,17 @@ jobs:
       - name: Install kube-linter
         run: |
           curl -fsSL \
-            https://raw.githubusercontent.com/stackrox/kube-linter/master/install.sh \
-            | bash -s -- -b /usr/local/bin
+            https://github.com/stackrox/kube-linter/releases/download/v0.8.3/kube-linter-linux.tar.gz \
+            -o /tmp/kube-linter.tar.gz
+
+          tar -xzf /tmp/kube-linter.tar.gz -C /tmp
+
+          sudo install \
+            -m 0755 \
+            /tmp/kube-linter \
+            /usr/local/bin/kube-linter
+
+          kube-linter version
 
       - name: Lint Kubernetes manifests
         run: |
