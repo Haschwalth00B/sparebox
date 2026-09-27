@@ -27,6 +27,7 @@
           # failing the box if one of them goes missing again.
           ./modules/networking.nix
           ./modules/ssh.nix
+	  ./modules/tailscale.nix
           ./modules/security.nix
           ./modules/users.nix
           ./modules/safety-assertions.nix
