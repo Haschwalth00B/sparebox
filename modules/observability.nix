@@ -109,5 +109,8 @@
 
   environment.etc."grafana/dashboards/kubernetes-gitops.json".source =
     ../grafana/dashboards/kubernetes-gitops.json;
+
+  environment.etc."grafana/dashboards/slo.json".source =
+    ../grafana/dashboards/slo.json;
 }
 
