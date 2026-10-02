@@ -41,6 +41,7 @@ spec:
           args:
             - -promscrape.config=/etc/vmagent/prometheus.yml
             - -remoteWrite.url=http://127.0.0.1:8428/api/v1/write
+            - -remoteWrite.tmpDataPath=/vmagent-remotewrite-data
             - -httpListenAddr=127.0.0.1:8429
 
           ports:
@@ -59,6 +60,8 @@ spec:
             - name: config
               mountPath: /etc/vmagent
               readOnly: true
+            - name: remote-write-data
+              mountPath: /vmagent-remotewrite-data
 
           readinessProbe:
             httpGet:
@@ -82,3 +85,5 @@ spec:
         - name: config
           configMap:
             name: vmagent-config
+        - name: remote-write-data
+          emptyDir: {}

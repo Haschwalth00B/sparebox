@@ -26,6 +26,8 @@ spec:
             - --config.file=/etc/blackbox-exporter/blackbox.yml
 
           securityContext:
+            runAsUser: 65534
+            runAsGroup: 65534
             runAsNonRoot: true
             readOnlyRootFilesystem: true
 
