@@ -24,16 +24,19 @@ spec:
                 labelSelector:
                   matchLabels:
                     app: sparebox-web
+
       containers:
         - name: nginx
           image: nginx:1.27-alpine
           ports:
             - name: http
               containerPort: 80
+
           securityContext:
             runAsNonRoot: true
             runAsUser: 101
             readOnlyRootFilesystem: true
+
           resources:
             requests:
               cpu: 50m
@@ -41,3 +44,15 @@ spec:
             limits:
               cpu: 200m
               memory: 128Mi
+
+          volumeMounts:
+            - name: nginx-cache
+              mountPath: /var/cache/nginx
+            - name: nginx-run
+              mountPath: /var/run
+
+      volumes:
+        - name: nginx-cache
+          emptyDir: {}
+        - name: nginx-run
+          emptyDir: {}
