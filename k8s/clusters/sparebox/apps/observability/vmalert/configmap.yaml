@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vmalert-rules
+  namespace: observability
+data:
+  sparebox-alerts.yaml: |
+    groups:
+      - name: sparebox-web
+        interval: 15s
+        rules:
+          - alert: SpareboxWebDown
+            expr: up{job="sparebox-web"} == 0
+            for: 1m
+            labels:
+              severity: critical
+              service: sparebox-web
+            annotations:
+              summary: "sparebox-web is down"
+              description: "The sparebox-web SLO probe has reported the service as unavailable for more than 1 minute."

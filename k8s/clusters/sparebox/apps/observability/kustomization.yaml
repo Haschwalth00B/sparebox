@@ -5,3 +5,5 @@ resources:
   - vmagent
   - kube-state-metrics
   - blackbox-exporter
+  - vmalert
+  - alertmanager

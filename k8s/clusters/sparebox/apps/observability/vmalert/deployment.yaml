@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vmalert
+  namespace: observability
+  labels:
+    app: vmalert
+spec:
+  replicas: 1
+
+  strategy:
+    type: Recreate
+
+  selector:
+    matchLabels:
+      app: vmalert
+
+  template:
+    metadata:
+      labels:
+        app: vmalert
+
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+
+      containers:
+        - name: vmalert
+          image: victoriametrics/vmalert:v1.152.0
+
+          args:
+            - -datasource.url=http://127.0.0.1:8428
+            - -notifier.url=http://127.0.0.1:9093
+            - -rule=/etc/vmalert/rules/*.yaml
+
+          ports:
+            - name: http
+              containerPort: 8880
+
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+
+          volumeMounts:
+            - name: rules
+              mountPath: /etc/vmalert/rules
+              readOnly: true
+
+      volumes:
+        - name: rules
+          configMap:
+            name: vmalert-rules
