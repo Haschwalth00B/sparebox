@@ -10,7 +10,7 @@ data:
         interval: 15s
         rules:
           - alert: SpareboxWebDown
-            expr: up{job="sparebox-web"} == 0
+            expr: probe_success{job="sparebox-web"} == 0
             for: 1m
             labels:
               severity: critical

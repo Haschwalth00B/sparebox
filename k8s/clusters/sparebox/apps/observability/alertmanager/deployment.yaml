@@ -24,6 +24,9 @@ spec:
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
 
+      securityContext:
+        fsGroup: 65534
+
       containers:
         - name: alertmanager
           image: quay.io/prometheus/alertmanager:v0.28.1
@@ -54,6 +57,9 @@ spec:
             - name: config
               mountPath: /etc/alertmanager
               readOnly: true
+            - name: discord-secret
+              mountPath: /etc/alertmanager/secrets
+              readOnly: true
             - name: data
               mountPath: /alertmanager
 
@@ -61,5 +67,9 @@ spec:
         - name: config
           configMap:
             name: alertmanager-config
+        - name: discord-secret
+          secret:
+            secretName: alertmanager-discord
+            defaultMode: 0440
         - name: data
           emptyDir: {}
