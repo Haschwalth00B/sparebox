@@ -28,6 +28,12 @@ spec:
         - name: alertmanager
           image: quay.io/prometheus/alertmanager:v0.28.1
 
+          securityContext:
+            runAsUser: 65534
+            runAsGroup: 65534
+            runAsNonRoot: true
+            readOnlyRootFilesystem: true
+
           args:
             - --config.file=/etc/alertmanager/alertmanager.yml
             - --storage.path=/alertmanager

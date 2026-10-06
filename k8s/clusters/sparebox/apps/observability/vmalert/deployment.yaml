@@ -28,6 +28,12 @@ spec:
         - name: vmalert
           image: victoriametrics/vmalert:v1.152.0
 
+          securityContext:
+            runAsUser: 65534
+            runAsGroup: 65534
+            runAsNonRoot: true
+            readOnlyRootFilesystem: true
+
           args:
             - -datasource.url=http://127.0.0.1:8428
             - -notifier.url=http://127.0.0.1:9093
