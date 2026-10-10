@@ -1,0 +1,19 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: sparebox-web-network-delay
+  namespace: gitops-test
+spec:
+  action: delay
+  mode: one
+  duration: 30s
+  selector:
+    namespaces:
+      - gitops-test
+    labelSelectors:
+      app: sparebox-web
+  direction: to
+  delay:
+    latency: 100ms
+    jitter: 10ms
+    correlation: "25"

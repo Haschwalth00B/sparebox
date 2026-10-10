@@ -1,0 +1,20 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: Schedule
+metadata:
+  name: sparebox-web-weekly-pod-failure
+  namespace: gitops-test
+spec:
+  schedule: "@every 168h"
+  type: PodChaos
+  concurrencyPolicy: Forbid
+  historyLimit: 2
+  startingDeadlineSeconds: 60
+  podChaos:
+    action: pod-failure
+    mode: one
+    duration: 30s
+    selector:
+      namespaces:
+        - gitops-test
+      labelSelectors:
+        app: sparebox-web
