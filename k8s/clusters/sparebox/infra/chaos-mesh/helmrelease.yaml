@@ -1,0 +1,41 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: chaos-mesh
+  namespace: flux-system
+spec:
+  interval: 30m
+  releaseName: chaos-mesh
+  targetNamespace: chaos-mesh
+  chart:
+    spec:
+      chart: chaos-mesh
+      version: "2.8.4"
+      interval: 1h
+      sourceRef:
+        kind: HelmRepository
+        name: chaos-mesh
+        namespace: flux-system
+  install:
+    createNamespace: true
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    clusterScoped: true
+    timezone: Asia/Kolkata
+    controllerManager:
+      replicaCount: 1
+      enableFilterNamespace: true
+    chaosDaemon:
+      runtime: containerd
+      socketPath: /run/k3s/containerd/containerd.sock
+    dashboard:
+      create: true
+      securityMode: true
+      hostNetwork: false
+      replicaCount: 1
+      service:
+        type: ClusterIP

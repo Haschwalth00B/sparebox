@@ -1,0 +1,18 @@
+clusterScoped: true
+timezone: Asia/Kolkata
+
+controllerManager:
+  replicaCount: 1
+  enableFilterNamespace: true
+
+chaosDaemon:
+  runtime: containerd
+  socketPath: /run/k3s/containerd/containerd.sock
+
+dashboard:
+  create: true
+  securityMode: true
+  hostNetwork: false
+  replicaCount: 1
+  service:
+    type: ClusterIP
