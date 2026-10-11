@@ -121,11 +121,11 @@ different mechanisms:
 
 ---
 
-## 5. k3s platform (Phase 2 — in progress)
+## 5. Kubernetes platform and observability (Phase 2 — delivered)
 
 ### 5.1 Address plan
 
-Verified non-overlapping against everything already on the box:
+Verified non-overlapping against the existing host and lab:
 
 | Range | Use |
 |---|---|
@@ -134,45 +134,54 @@ Verified non-overlapping against everything already on the box:
 | `192.168.1.0/24` | host LAN |
 | `172.17.0.0/16` | Docker default bridge |
 | `172.20.20.0/24` | Containerlab management network |
-| `10.0.x.x/32`, `10.1–10.3.0.0/24`, `10.12/23/31.0.0/30`, `192.168.101.0/24` | fabric |
+| `10.0.x.x/32`, `10.1–10.3.0.0/24`, `10.12/23/31.0.0/30`, `192.168.101.0/24` | network fabric |
 
-The k3s CIDRs are pinned explicitly in `modules/k3s-platform.nix` rather than left
-to defaults, so the non-overlap is a recorded decision instead of a coincidence.
+The k3s CIDRs are pinned in `modules/k3s-platform.nix`.
 
-### 5.2 Single reconciler
+### 5.2 Cluster reconciliation
 
-k3s ships an auto-deploy manifest directory (`/var/lib/rancher/k3s/server/manifests`)
-which is a second, push-based reconciler. Anything Flux is meant to own is disabled
-at the k3s level so there is exactly one control loop over cluster state.
-See ADR 0003.
+Flux reconciles `k8s/clusters/sparebox` from Git. The k3s auto-deploy manifest mechanism is disabled for resources managed by Flux, avoiding competing reconciliation paths.
+
+The Flux SOPS decryption configuration is committed in the cluster configuration. Secret decryption and delivery depend on the corresponding age key and Kubernetes secret being present on the target system.
 
 ### 5.3 Node resource protection
 
-k3s's default kubelet eviction thresholds cover disk only. Without a memory signal
-the kernel OOM killer fires before the kubelet evicts anything — and on this box its
-neighbours are the Containerlab routers. `systemReserved`, `kubeReserved` and a
-memory eviction threshold are set explicitly in `modules/k3s-platform.nix`.
+The k3s configuration sets `systemReserved`, `kubeReserved`, and a memory eviction threshold. The kubelet permits host swap with `fail-swap-on: false`; Kubernetes workloads still follow the configured kubelet swap behaviour. Interpret stress-test results in the context of this single-node host and its other services.
 
-Swap: the host has a 16 GB swapfile. k3s sets `fail-swap-on: false`, so the kubelet
-starts; the default `NoSwap` behaviour means pods cannot use swap while host
-services can. This is worth remembering when interpreting StressChaos results later.
+### 5.4 Delivered platform
 
-### 5.4 Planned, not yet built
-
-| Week | Component |
+| Component | Implemented role |
 |---|---|
-| 8 | Flux bootstrap, `k8s/clusters/sparebox/` tree, podinfo demo service |
-| 9 | CI gate — kubeconform, kube-linter, `nix flake check`, branch protection |
-| 10 | Cluster metrics into the metrics pipeline |
-| 11 | 2–3 SLOs with error-budget burn |
-| 12 | vmalert + Alertmanager; sops-nix + Flux SOPS decryption |
-| 13–14 | Chaos Mesh, scheduled experiments, game days, postmortems |
-| 15–17 | Bridge a fabric regional failure to k3s pod rescheduling; unified dashboard |
+| k3s | Single-node Kubernetes control plane and workload scheduling |
+| Flux | GitOps reconciliation of cluster manifests |
+| `sparebox-web` | Two-replica test Deployment in `gitops-test` |
+| vmagent | Scrapes Kubernetes and HTTP-probe metrics and writes to host VictoriaMetrics |
+| Blackbox Exporter | HTTP availability and latency probes |
+| VictoriaMetrics | Host-side metrics storage, with configured retention |
+| Grafana | Host-side dashboards for topology, Kubernetes/GitOps, and SLOs |
+| vmalert | Evaluates the `SpareboxWebDown` alert rule |
+| Alertmanager | Routes firing and resolved alerts to the configured Discord webhook |
+| Chaos Mesh | Controlled workload fault-injection experiments |
 
-**Open architecture decision (decide before the Week 8 `infra/` tree is committed):**
-VictoriaMetrics and Grafana already exist as host services. Running a second
-in-cluster pair gives two TSDBs and two Grafanas that Phase 3 then has to merge
-anyway. Keeping the host instance as the single TSDB and running only a scraper
-in-cluster would deliver the unified Phase 3 view in Week 10 instead of Week 16.
-The cost is making VictoriaMetrics reachable from pods without exposing an
-unauthenticated write endpoint to the LAN.
+VictoriaMetrics and Grafana remain host services; the cluster scraper sends metrics to the host-side metrics endpoint. This avoids maintaining a second in-cluster metrics database and Grafana instance.
+
+### 5.5 Validation and recovery evidence
+
+The GitHub Actions workflow runs `nix flake check`, evaluates the NixOS system derivation, renders the Kubernetes manifests, and validates them with kubeconform and kube-linter. Derivation evaluation is not a complete NixOS system build, and branch protection is not configured.
+
+Recorded game days cover pod deletion and replacement, a controlled scale-to-zero alert lifecycle, CPU stress, packet loss, and network delay. The associated evidence and limitations are documented in `docs/chaos-mesh-validation.md` and `postmortems/`.
+
+The tests demonstrated workload recovery and the firing/resolution notification path. They do not establish high availability or uninterrupted service during every experiment. Exact MTTR and outage duration were not measured, and continuous HTTP impact measurements were not collected for every fault injection.
+
+Chaos Mesh experiment and schedule resources were removed after testing. Scheduled experiments are not left running.
+
+### 5.6 Known limitations and deferred work
+
+- **Single-node platform:** there is no Kubernetes HA control plane or redundant host.
+- **Phase 3 integration:** fabric regional failures are not yet connected to Kubernetes pod-rescheduling behaviour.
+- **Unified telemetry:** the existing dashboards cover their respective areas, but a combined fabric/BGP and Kubernetes view remains future work.
+- **Fabric telemetry:** the existing collector does not provide comprehensive OSPF, LDP, interface-counter, or IPsec metrics.
+- **Fabric protocol scope:** the full red/blue Inter-AS Option B design and fabric-wide LDP remain deferred as described in ADR 0001.
+- **SLO evidence:** SLO definitions and alerting exist, but exact MTTR, per-experiment error-budget consumption, and continuous impact during all experiments remain unmeasured.
+
+Phase 2 is considered delivered with these limitations explicitly recorded. Phase 3 will focus on connecting the network-fabric failure signals to Kubernetes recovery and presenting the integrated system in a unified dashboard.

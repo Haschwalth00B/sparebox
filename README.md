@@ -6,7 +6,7 @@ k3s platform — with one `flake.nix` as the source of truth for both, and measu
 failure behaviour rather than asserted failure behaviour.
 
 Phase 1 (network fabric) is complete and reproducible from a cold deploy.
-Phase 2 (k3s platform) is in progress.
+Phase 2 (Kubernetes platform, observability, and chaos validation) is delivered. Phase 3 will integrate fabric failures with Kubernetes recovery.
 
 ---
 
@@ -24,13 +24,22 @@ flowchart TB
         R3 <-->|"eBGP + IPsec · 10.31.0.0/30"| R1
     end
 
-    subgraph platform["k3s platform — Phase 2 (in progress)"]
+    subgraph platform["Kubernetes platform — Phase 2 (delivered)"]
         direction LR
         FLUX["Flux<br/>pull-based GitOps"]
         K3S["k3s server<br/>pods 10.42/16 · svc 10.43/16"]
-        APP["podinfo<br/>demo service"]
+        APP["sparebox-web<br/>2 replicas"]
+        PROBE["Blackbox Exporter<br/>HTTP probes"]
+        AGENT["vmagent<br/>scrape and remote write"]
+        VMA["vmalert<br/>alert rules"]
+        ALERT["Alertmanager"]
         FLUX --> K3S
         K3S --> APP
+        PROBE -->|"probes HTTP"| APP
+        AGENT -->|"scrapes"| PROBE
+        AGENT -->|"writes metrics"| VM
+        VM -.->|"query"| VMA
+        VMA -->|"fires/resolves alerts"| ALERT
     end
 
     TELE["Telegraf<br/>host service"]
@@ -39,7 +48,7 @@ flowchart TB
 
     R1 -.->|"vtysh BGP state"| TELE
     TELE --> VM
-    K3S -.->|"Phase 2 · Week 10"| VM
+    K3S -.->|"Kubernetes metrics"| AGENT
     VM --> GRAF
 ```
 
@@ -151,7 +160,7 @@ Stated explicitly because the difference matters in review:
 
 | Document | What it covers |
 |---|---|
-| [`docs/architecture.md`](docs/architecture.md) | Addressing, protocol boundaries, host services, Phase 2 plan |
+| [`docs/architecture.md`](docs/architecture.md) | As-built architecture, addressing, protocol boundaries, Phase 2 implementation and limitations |
 | [`docs/runbook.md`](docs/runbook.md) | Operational procedures, known traps, verification commands |
 | [`docs/phase1-progress.md`](docs/phase1-progress.md) | Full Phase 1 build and verification log |
 | [`docs/decisions/`](docs/decisions/) | Architecture decision records |
