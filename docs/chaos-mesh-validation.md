@@ -74,3 +74,48 @@ These tests validate workload-level fault injection and recovery.
 They do not measure FRR/MPLS route reconvergence, VPN failover, or
 fabric-level packet-loss recovery. Those results remain documented
 separately in the Containerlab trial results.
+
+## Game Day 1: Web Pod Failure and Recovery
+
+**Date:** 2026-10-11  
+**Experiment:** Chaos Mesh `PodChaos`, action `pod-kill`  
+**Target namespace:** `gitops-test`  
+**Target selector:** `app=sparebox-web`  
+**Mode:** `one`
+
+### Hypothesis
+
+Terminating one web pod should cause Kubernetes to create a replacement.
+With two replicas, the web service should remain reachable through its
+ClusterIP service.
+
+### Observations
+
+- One `sparebox-web` pod was terminated by Chaos Mesh.
+- Kubernetes created a replacement pod, which reached `Running` and `Ready`.
+- The deployment returned to 2/2 available replicas.
+- The service had two endpoints after recovery.
+- All 10 HTTP requests performed after recovery returned HTTP 200.
+- Observed post-recovery response times were approximately 1–3 ms.
+- VictoriaMetrics `probe_success` remained `1` at every 5-second sample
+  from 10:15 to 10:20 UTC.
+- No probe failures were observed in that query window.
+- The temporary `PodChaos` resource was deleted after the experiment.
+
+### Outcome
+
+**Passed:** Kubernetes self-healing and post-recovery HTTP availability.
+
+The monitoring samples support service availability throughout the observed
+window. Because probes were sampled every five seconds, this does not prove
+that no brief interruption occurred between samples.
+
+### Limitations and follow-up
+
+- Exact pod recovery duration was not measured.
+- HTTP requests were run after recovery, not continuously during injection.
+- The experiment did not validate the `SpareboxWebDown` alert or notification
+  delivery because no failed probes were observed.
+
+Next: run a separate, controlled outage test to validate alert firing,
+notification delivery, and alert resolution.
