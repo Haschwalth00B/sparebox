@@ -53,7 +53,7 @@ Supporting experiment results are recorded in `docs/chaos-mesh-validation.md`.
 
 - [ ] Capture experiment start, injection end, and recovery timestamps.
 - [ ] Collect continuous HTTP success and latency measurements during fault injection.
-- [ ] Define an explicit availability SLO and error-budget calculation.
+- [x] Define availability and latency objectives and the error-budget calculation in `grafana/dashboards/slo.json`.
 - [ ] Review and report Containerlab routing reconvergence results separately.
 - [ ] Keep claims in the README and portfolio aligned with measured evidence.
 

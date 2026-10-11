@@ -66,4 +66,4 @@ resilience experiment. It was not an unexpected infrastructure failure.
 
 - [ ] Sample HTTP success and latency continuously during future CPU stress tests — project owner — before final evaluation.
 - [ ] Record injection start, injection end, and recovery timestamps — project owner — before final evaluation.
-- [ ] Define the availability SLO and error-budget calculation — project owner — before final evaluation.
+- [x] Define the availability SLO and error-budget calculation — reflected in `grafana/dashboards/slo.json`. Per-experiment error-budget consumption remains unmeasured.

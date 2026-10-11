@@ -69,4 +69,4 @@ not caused by an unexpected production failure.
 ## Action items
 
 - [ ] Capture exact timestamps for outage start, firing, recovery, and resolution — project owner — before final evaluation.
-- [ ] Define and document the availability SLO and error-budget calculation — project owner — before final evaluation.
+- [x] Define and document the availability SLO and error-budget calculation — reflected in `grafana/dashboards/slo.json`. Per-experiment error-budget consumption remains unmeasured.
