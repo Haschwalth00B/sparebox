@@ -13,7 +13,7 @@ routing reconvergence benchmarks in `containerlab/chaos/`.
 - Test workload: `sparebox-web`
 - Namespace: `gitops-test`
 - Workload: nginx Deployment with two replicas
-- Fault injection: Chaos Mesh NetworkChaos
+- Fault injection: Chaos Mesh NetworkChaos and StressChaos
 
 ## Kernel support
 
@@ -44,6 +44,15 @@ The required `iptable_filter` module was loaded during validation.
   the injected fault.
 - The `sparebox-web` Deployment remained at 2/2 ready replicas.
 - The temporary NetworkChaos resource was removed after testing.
+
+### CPU stress
+
+- A temporary StressChaos experiment targeted one `sparebox-web` pod.
+- Configuration: one CPU worker at 25% load for 30 seconds.
+- Chaos Mesh reported successful injection and recovery in Kubernetes events.
+- The `sparebox-web` Deployment remained at 2/2 ready replicas.
+- The temporary StressChaos resource was deleted after testing.
+- No HTTP probe measurements during the CPU stress interval were recorded.
 
 ## Verification commands
 
