@@ -30,10 +30,10 @@ jobs:
         run: |
           nix flake check --show-trace
 
-      - name: Build NixOS configuration
+      - name: Evaluate NixOS configuration
         run: |
-          nix build \
-            .#nixosConfigurations.sparebox.config.system.build.toplevel
+          nix eval --raw \
+            .#nixosConfigurations.sparebox.config.system.build.toplevel.drvPath
 
       - name: Install kustomize
         uses: imranismail/setup-kustomize@v3

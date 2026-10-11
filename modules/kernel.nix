@@ -1,10 +1,23 @@
 { config, lib, pkgs, ... }:
 {
+  # Legacy iptables backend required by Chaos Mesh NetworkChaos.
+  boot.kernelPatches = [
+    {
+      name = "enable-legacy-iptables-filter";
+      patch = null;
+      structuredExtraConfig = with lib.kernel; {
+        NETFILTER_XTABLES_LEGACY = yes;
+        IP_NF_IPTABLES_LEGACY = module;
+        IP_NF_FILTER = module;
+      };
+    }
+  ];
   boot.kernelModules = [
     "overlay"
     "br_netfilter"
     "nf_tables"
     "ip_tables"
+    "iptable_filter"
     "tcp_bbr"
     # MPLS forwarding for the Containerlab fabric's Week 5 VPNv4 work
     "mpls_router"

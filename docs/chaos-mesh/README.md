@@ -112,7 +112,8 @@ name when inspecting status.
 - The Deployment returned to 2/2 replicas and the alert returned to inactive.
 - The temporary outage experiment was deleted.
 - The three 30-second templates passed server-side dry-run validation.
-- The NetworkChaos and StressChaos templates have not yet been executed.
+- NetworkChaos delay and 10% packet-loss experiments were subsequently executed; both reported recovery, and the temporary resources were removed.
+- The StressChaos CPU template was executed for 30 seconds at 25% load with one worker; injection and recovery succeeded, and the Deployment remained 2/2 ready. See `docs/chaos-mesh-validation.md` for test results.
 - No recurring Schedule resource has been configured.
 - The three templates are documentation files and are not reconciled by Flux.
 
