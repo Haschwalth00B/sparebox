@@ -68,4 +68,4 @@ failure.
 
 - [ ] Capture timestamped HTTP probe results throughout future pod-failure experiments — project owner — before final evaluation.
 - [ ] Record experiment start, pod deletion, replacement readiness, and final recovery timestamps — project owner — before final evaluation.
-- [ ] Define the availability SLO and error-budget calculation — project owner — before final evaluation.
+- [x] Define the availability SLO and error-budget calculation — reflected in `grafana/dashboards/slo.json`. Per-experiment error-budget consumption remains unmeasured.
