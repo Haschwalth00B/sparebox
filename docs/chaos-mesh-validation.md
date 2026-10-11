@@ -119,3 +119,51 @@ that no brief interruption occurred between samples.
 
 Next: run a separate, controlled outage test to validate alert firing,
 notification delivery, and alert resolution.
+
+## Game Day 2: Alert Firing, Discord Notification, and Resolution
+
+### Objective
+Validate the end-to-end alerting path by deliberately taking
+`sparebox-web` offline, confirming that `SpareboxWebDown` fires,
+and verifying that Discord receives both firing and resolved
+notifications.
+
+### Procedure
+1. Confirmed `sparebox-web` had two ready replicas.
+2. Checked that Alertmanager was healthy.
+3. Scaled `sparebox-web` from two replicas to zero to simulate an outage.
+4. Monitored the vmalert API until `SpareboxWebDown` entered
+   the `firing` state.
+5. Allowed time for the firing notification to be sent.
+6. Restored the Deployment to two replicas and waited for rollout
+   completion.
+7. Verified the Discord firing and resolved notifications.
+
+### Results
+- Alert rule: `SpareboxWebDown`
+- Expression: `probe_success{job="sparebox-web"} == 0`
+- Severity: `critical`
+- Alert progression observed: `inactive` -> `pending` -> `firing`
+- Firing notification received in Discord: approximately 4:01
+- Resolved notification received in Discord: approximately 4:06
+- Alertmanager notification counter for Discord: 1 at the time
+  of the post-test metrics query
+- Discord failure counters reported: 0
+- Application restored successfully: 2/2 replicas ready
+
+### Outcome
+The controlled outage triggered the expected critical alert.
+Discord received both the firing and resolved notifications,
+confirming the end-to-end notification path and recovery signal.
+
+The reported Discord receipt times are observations, not a
+precise measurement of outage duration or alert-resolution latency.
+The notification counter is a point-in-time metric and should
+not be interpreted as the total number of messages received.
+
+### Follow-up
+- Keep the alert rule, Alertmanager configuration, and notification
+  credentials managed safely.
+- For future game days, record outage start, alert firing,
+  application recovery, and resolved notification timestamps
+  separately to calculate detection and recovery latency.
