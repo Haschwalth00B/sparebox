@@ -23,6 +23,8 @@
       containerlab
       iproute2
       gnugrep
+      gawk
+      jq
     ];
 
     serviceConfig = {

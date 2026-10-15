@@ -108,4 +108,53 @@ if (( DEPLOY_RC != 0 )); then
 fi
 
 echo
+echo "=== Waiting for BGP and data-plane convergence ==="
+if ! bash containerlab/chaos/inject.sh wait-converged 180; then
+  echo "ERROR: BGP/data-plane convergence failed after 180 seconds." >&2
+  exit 1
+fi
+
+echo
+echo "=== Waiting for configured IPsec tunnels ==="
+IPSEC_TIMEOUT=180
+IPSEC_DEADLINE=$(( $(date +%s) + IPSEC_TIMEOUT ))
+
+while :; do
+  IPSEC_READY=1
+
+  for node in "${ROUTERS[@]}"; do
+    config="containerlab/strongswan/${node}/ipsec.conf"
+    container="clab-sparebox-fabric-ipsec-${node}"
+
+    if ! status=$(docker exec "$container" /usr/sbin/ipsec statusall 2>/dev/null); then
+      echo "WAIT: IPsec status unavailable on $node"
+      IPSEC_READY=0
+      continue
+    fi
+
+    while read -r conn; do
+      [[ -n "$conn" ]] || continue
+
+      if ! grep -Eq "^${conn}\\[[0-9]+\\]: ESTABLISHED([[:space:]]|$)" <<<"$status" ||
+         ! grep -Eq "^${conn}\\{[0-9]+\\}:[[:space:]]+INSTALLED," <<<"$status"; then
+        echo "WAIT: $node — $conn lacks an established IKE SA or installed child SA"
+        IPSEC_READY=0
+      fi
+    done < <(awk '$1 == "conn" {print $2}' "$config")
+  done
+
+  if (( IPSEC_READY == 1 )); then
+    echo "OK: all configured IPsec connections have established and installed SAs"
+    break
+  fi
+
+  if (( $(date +%s) >= IPSEC_DEADLINE )); then
+    echo "ERROR: configured IPsec tunnels did not become healthy within ${IPSEC_TIMEOUT}s." >&2
+    exit 1
+  fi
+
+  sleep 5
+done
+
+echo
 echo "=== Fabric recovery completed ==="
