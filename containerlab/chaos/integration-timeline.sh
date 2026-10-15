@@ -41,7 +41,8 @@ query_range() {
     --data-urlencode "query=$query" \
     --data-urlencode "start=$START" \
     --data-urlencode "end=$END" \
-    --data-urlencode 'step=5s' > "$output"
+    --data-urlencode 'step=5s' \
+    --data-urlencode 'latency_offset=1s' > "$output"
 }
 
 echo "Querying historical telemetry (read-only)..."
