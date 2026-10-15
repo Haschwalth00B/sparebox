@@ -112,5 +112,8 @@
 
   environment.etc."grafana/dashboards/slo.json".source =
     ../grafana/dashboards/slo.json;
+
+  environment.etc."grafana/dashboards/phase3-recovery.json".source =
+    ../grafana/dashboards/phase3-recovery.json;
 }
 
