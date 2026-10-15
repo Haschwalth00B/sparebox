@@ -6,7 +6,8 @@ k3s platform — with one `flake.nix` as the source of truth for both, and measu
 failure behaviour rather than asserted failure behaviour.
 
 Phase 1 (network fabric) is complete and reproducible from a cold deploy.
-Phase 2 (Kubernetes platform, observability, and chaos validation) is delivered. Phase 3 will integrate fabric failures with Kubernetes recovery.
+Phase 2 (Kubernetes platform, observability, and chaos validation) is delivered.
+Phase 3 cross-layer integration has been demonstrated with a scripted fabric-failure and Kubernetes recovery experiment. Broader telemetry and a unified dashboard remain future work.
 
 ---
 

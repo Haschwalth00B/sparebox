@@ -264,6 +264,54 @@ A Containerlab deploy on this NixOS host may report an inability to locate `/lib
 
 Containerlab may also report `/etc/hosts: read-only file system` while operating on generated containers. Again, verify the actual deployment state rather than treating the warning by itself as proof of a broken lab.
 
+## Phase 3 fabric-failure and Kubernetes-recovery integration
+
+The integration runner exercises a controlled inter-region link failure and
+checks whether fresh BGP telemetry detects the failure before a Kubernetes
+workload fault is introduced. It then verifies workload recovery, fabric
+convergence, and final health signals.
+
+Run from the repository root on `sparebox`:
+
+    export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+    bash containerlab/chaos/integration-check.sh
+    bash containerlab/chaos/integration-run.sh --execute
+
+**Warning:** `--execute` injects a temporary link failure and a Chaos Mesh
+`PodChaos` pod-kill experiment against `gitops-test/sparebox-web`. Run it only
+when a brief test-workload disturbance is acceptable. Review the script before
+execution and avoid running it when uninterrupted availability is required.
+
+### Recorded integration run — 2026-10-15
+
+Evidence directory:
+
+    /tmp/sparebox-phase3-run-20261015T082530Z/
+
+The run completed successfully. Observed results:
+
+- Baseline checks passed, including the HTTP probe and 2/2 Deployment replicas.
+- Fresh BGP-down telemetry for peers `10.12.0.1` and `10.12.0.2` was detected
+  before the Kubernetes pod-kill action.
+- Kubernetes replaced the targeted pod, and the replacement reached `Running`
+  and `Ready`.
+- The inter-region link recovered and the fabric converged.
+- Final recovery checks passed: all 18 BGP peer series were up, the HTTP probe
+  passed, and `sparebox-web` returned to 2/2 available replicas.
+- The temporary Chaos Mesh resource was removed. An independent final-state
+  check found no remaining tested Chaos Mesh fault resources, recorded link
+  faults, or `netem` qdiscs.
+
+Review `run.log`, `final-observation.json`, `timeline.json`, and the
+`*-timestamps.json` files in the evidence directory for details.
+
+**Measurement caveat:** the fresh-sample recovery checks passed, but the
+historical timeline had incomplete trailing sample coverage for both BGP and
+HTTP-probe series. It does not establish continuous coverage throughout the
+experiment or prove zero user-visible interruption. This test does not establish
+Kubernetes high availability, exact MTTR, or uninterrupted service under every
+fabric failure.
+
 ## Phase 1 stopping point
 
 Phase 1 is complete. The stable foundation is:

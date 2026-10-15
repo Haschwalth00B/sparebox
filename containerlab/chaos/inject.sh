@@ -34,6 +34,9 @@ set -euo pipefail
 
 PREFIX="${CLAB_PREFIX:-clab-sparebox-fabric}"
 STATE="${CHAOS_STATE:-/var/tmp/sparebox-chaos.state}"
+TIMED_FAULT_SCENARIO=""
+TIMED_FAULT_TARGET=""
+TIMED_FAULT_TIMER_PID=""
 
 NODES=(r1-1 r1-2 r2-1 r2-2 r3-1 r3-2)
 
@@ -730,14 +733,22 @@ main() {
       fi
 
       if [[ -n "$dur" ]]; then
-        # auto-heal on any exit path, including Ctrl-C
-        trap 'do_heal "$s" "$t" 2>/dev/null || true' EXIT INT TERM
+        # Keep fault identity in shell-global variables for signal cleanup.
+        TIMED_FAULT_SCENARIO="$s"
+        TIMED_FAULT_TARGET="$t"
+        trap 'if [[ -n "${TIMED_FAULT_TIMER_PID:-}" ]]; then kill "$TIMED_FAULT_TIMER_PID" 2>/dev/null || true; wait "$TIMED_FAULT_TIMER_PID" 2>/dev/null || true; TIMED_FAULT_TIMER_PID=""; fi; if [[ -n "${TIMED_FAULT_SCENARIO:-}" && -n "${TIMED_FAULT_TARGET:-}" ]]; then log "EXIT cleanup: healing ${TIMED_FAULT_SCENARIO} ${TIMED_FAULT_TARGET}"; do_heal "$TIMED_FAULT_SCENARIO" "$TIMED_FAULT_TARGET" || log "ERROR: EXIT cleanup could not heal ${TIMED_FAULT_SCENARIO} ${TIMED_FAULT_TARGET}"; fi' EXIT
+        trap 'exit 130' INT
+        trap 'exit 143' TERM
 
         do_fail "$s" "$t"
 
         log "holding fault for ${dur}s"
 
-        sleep "$dur"
+        # Background the timer so wait can be interrupted by INT/TERM.
+        sleep "$dur" &
+        TIMED_FAULT_TIMER_PID=$!
+        wait "$TIMED_FAULT_TIMER_PID"
+        TIMED_FAULT_TIMER_PID=""
 
         trap - EXIT INT TERM
 
