@@ -7,7 +7,7 @@ failure behaviour rather than asserted failure behaviour.
 
 Phase 1 (network fabric) is complete and reproducible from a cold deploy.
 Phase 2 (Kubernetes platform, observability, and chaos validation) is delivered.
-Phase 3 cross-layer integration has been demonstrated with a scripted fabric-failure and Kubernetes recovery experiment. Broader telemetry and a unified dashboard remain future work.
+Phase 3 cross-layer integration has been demonstrated with a scripted fabric-failure and Kubernetes recovery experiment. An initial unified recovery dashboard brings live BGP peer health, Kubernetes replica counts, and HTTP probe health into one view. Broader fabric telemetry and richer recovery analysis remain future work.
 
 ---
 

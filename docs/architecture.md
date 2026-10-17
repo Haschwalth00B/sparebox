@@ -179,9 +179,9 @@ Chaos Mesh experiment and schedule resources were removed after testing. Schedul
 
 - **Single-node platform:** there is no Kubernetes HA control plane or redundant host.
 - **Phase 3 integration:** a scripted link-failure experiment demonstrated fresh BGP-down telemetry before a Kubernetes pod-kill test, followed by workload and fabric recovery. This bounded test does not prove high availability or uninterrupted service.
-- **Unified telemetry:** the existing dashboards cover their respective areas, but a combined fabric/BGP and Kubernetes view remains future work.
+- **Unified telemetry:** an initial Phase 3 recovery dashboard combines live BGP peer health, Kubernetes replica counts, and HTTP probe health. Broader fabric telemetry and richer historical recovery analysis remain future work.
 - **Fabric telemetry:** the existing collector does not provide comprehensive OSPF, LDP, interface-counter, or IPsec metrics.
 - **Fabric protocol scope:** the full red/blue Inter-AS Option B design and fabric-wide LDP remain deferred as described in ADR 0001.
 - **SLO evidence:** SLO definitions and alerting exist, but exact MTTR, per-experiment error-budget consumption, and continuous impact during all experiments remain unmeasured.
 
-Phase 2 is considered delivered with these limitations explicitly recorded. A Phase 3 integration run has demonstrated the fabric-failure-to-Kubernetes-recovery sequence. The runbook records the procedure, outcome, evidence location, and measurement caveats. A unified fabric/BGP and Kubernetes dashboard and broader fabric telemetry remain follow-on work.
+Phase 2 is considered delivered with these limitations explicitly recorded. A Phase 3 integration run has demonstrated the fabric-failure-to-Kubernetes-recovery sequence. The runbook records the procedure, outcome, evidence location, and measurement caveats. The initial unified Phase 3 recovery dashboard is available; broader fabric telemetry and richer historical recovery analysis remain follow-on work.

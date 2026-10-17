@@ -388,7 +388,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "### What this dashboard shows\n\n- Live BGP peer state, replica counts, and HTTP probe health.\n- A successful current state does not establish historical uptime or recovery time.\n- Phase 3 integration and boot-recovery test results are recorded in `docs/runbook.md`.\n- The integration run had incomplete trailing historical telemetry coverage; do not infer zero interruption or an exact MTTR from this dashboard."
+        "content": "### What this dashboard shows\n\n- Live BGP peer state, replica counts, and HTTP probe health.\n- A successful current state does not establish historical uptime or recovery time.\n- Phase 3 integration and boot-recovery test results are recorded in `docs/runbook.md`.\n- The recomputed integration timeline has enough distinct samples for trend analysis, but trailing historical coverage remains incomplete. Do not infer zero interruption or an exact MTTR from this dashboard."
       }
     }
   ]
