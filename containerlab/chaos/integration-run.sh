@@ -329,15 +329,27 @@ OLD_POD_GONE=0
 NEW_READY_POD=""
 
 for attempt in $(seq 1 30); do
+    # Refresh target identity during polling; a not-yet-reported target is
+    # not treated as success and does not stop the loop.
+    if kubectl get podchaos "$CHAOS_NAME" -n "$NAMESPACE" -o json \
+      > "$OUT_DIR/podchaos-status.json"; then
+        :
+    else
+        : > "$OUT_DIR/podchaos-status.json"
+    fi
+
     kubectl get pods -n "$NAMESPACE" -l "$SELECTOR" -o json \
       > "$OUT_DIR/pods-current.json"
 
     python3 - "$OUT_DIR/pods-before.txt" \
       "$OUT_DIR/pods-current.json" "$OUT_DIR/pods-current.txt" \
-      "$OUT_DIR/pods-new-ready.txt" <<'PODCHECK'
+      "$OUT_DIR/pods-new-ready.txt" "$OUT_DIR/podchaos-status.json" \
+      "$OUT_DIR/pods-target.txt" "$NAMESPACE" <<'PODCHECK'
 import json, sys
+from pathlib import Path
 
-before_path, current_path, names_path, ready_path = sys.argv[1:]
+(before_path, current_path, names_path, ready_path,
+ status_path, target_path, namespace) = sys.argv[1:]
 with open(before_path, encoding="utf-8") as f:
     before = {line.strip() for line in f if line.strip()}
 with open(current_path, encoding="utf-8") as f:
@@ -371,34 +383,81 @@ current_names = {
     item.get("metadata", {}).get("name", "")
     for item in items
 }
-old_gone = bool(before - current_names)
-print(f"Baseline pods absent: {sorted(before - current_names)}")
-print(f"New Running+Ready pods: {sorted(new_ready)}")
-print(f"Old pod disappearance observed: {old_gone}")
+
+target_pod = ""
+try:
+    if Path(status_path).stat().st_size:
+        status_doc = json.loads(Path(status_path).read_text(encoding="utf-8"))
+        records = status_doc.get("status", {}).get("experiment", {}).get(
+            "containerRecords", []
+        )
+        injected = []
+        for record in records:
+            try:
+                count = int(record.get("injectedCount", 0) or 0)
+            except (TypeError, ValueError):
+                raise SystemExit("ERROR: malformed injectedCount in PodChaos status.")
+            if count > 0:
+                injected.append(record)
+
+        if len(injected) > 1:
+            raise SystemExit(
+                f"ERROR: expected at most one injected target; found {len(injected)}."
+            )
+        if injected:
+            target_id = injected[0].get("id", "")
+            target_namespace, sep, target_pod = target_id.partition("/")
+            if not sep or target_namespace != namespace or not target_pod:
+                raise SystemExit(
+                    f"ERROR: unexpected PodChaos target identity: {target_id!r}"
+                )
+except json.JSONDecodeError:
+    # Status may be briefly unavailable while the resource is initializing.
+    target_pod = ""
+
+Path(target_path).write_text(
+    target_pod + "\n" if target_pod else "", encoding="utf-8"
+)
+
+target_gone = bool(
+    target_pod and target_pod in before and target_pod not in current_names
+)
+replacements = sorted(
+    name for name in new_ready
+    if name and name != target_pod and name not in before
+    and name in current_names
+)
+
+print(f"Chaos Mesh target: {target_pod or 'not reported yet'}")
+print(f"Target disappearance observed: {target_gone}")
+print(f"New Running+Ready replacement candidates: {replacements}")
+
 PODCHECK
 
+    TARGET_POD="$(cat "$OUT_DIR/pods-target.txt")"
+    NEW_READY_POD=""
+
     if [[ -s "$OUT_DIR/pods-new-ready.txt" ]]; then
-        NEW_READY_POD="$(head -n 1 "$OUT_DIR/pods-new-ready.txt")"
-    else
-        NEW_READY_POD=""
+        while IFS= read -r candidate; do
+            [[ -n "$candidate" && "$candidate" != "$TARGET_POD" ]] || continue
+            if grep -qxF "$candidate" "$OUT_DIR/pods-current.txt" &&
+               ! grep -qxF "$candidate" "$OUT_DIR/pods-before.txt"; then
+                NEW_READY_POD="$candidate"
+                break
+            fi
+        done < "$OUT_DIR/pods-new-ready.txt"
     fi
 
-    if grep -qxF "$NEW_READY_POD" "$OUT_DIR/pods-current.txt" \
-       && [[ -n "$NEW_READY_POD" ]] \
-       && comm -23 "$OUT_DIR/pods-before.txt" "$OUT_DIR/pods-current.txt" \
-          | grep -q .; then
-        REPLACEMENT_SEEN=1
-    fi
-
-    # At least one baseline pod must be absent; the other replica may remain.
-    if comm -23 "$OUT_DIR/pods-before.txt" "$OUT_DIR/pods-current.txt" \
-         | grep -q .; then
+    if [[ -n "$TARGET_POD" ]] &&
+       grep -qxF "$TARGET_POD" "$OUT_DIR/pods-before.txt" &&
+       ! grep -qxF "$TARGET_POD" "$OUT_DIR/pods-current.txt"; then
         OLD_POD_GONE=1
     fi
 
-    if (( REPLACEMENT_SEEN && OLD_POD_GONE )); then
-        echo "Replacement pod is Running and Ready: $NEW_READY_POD"
-        echo "At least one baseline pod has disappeared."
+    if [[ -n "$NEW_READY_POD" && "$OLD_POD_GONE" -eq 1 ]]; then
+        REPLACEMENT_SEEN=1
+        echo "Injected target disappeared: $TARGET_POD"
+        echo "Distinct replacement is Running and Ready: $NEW_READY_POD"
         break
     fi
 
@@ -433,6 +492,98 @@ if (( ! REPLACEMENT_SEEN || ! OLD_POD_GONE )); then
     echo "ERROR: replacement evidence incomplete; see saved pod snapshots." >&2
     exit 1
 fi
+
+# Verify the exact pod recorded as injected by Chaos Mesh disappeared.
+# Deployment recovery and Chaos Mesh AllRecovered are separate signals.
+if [[ ! -s "$OUT_DIR/podchaos-status.json" ]]; then
+    echo "ERROR: PodChaos status evidence is missing; cannot verify target identity." >&2
+    exit 1
+fi
+
+python3 - "$OUT_DIR/podchaos-status.json" \
+  "$OUT_DIR/pods-before.txt" "$OUT_DIR/pods-current.json" \
+  "$OUT_DIR/pods-new-ready.txt" "$NAMESPACE" <<'PODTARGET'
+import json, sys
+
+status_path, before_path, current_path, ready_path, namespace = sys.argv[1:]
+
+def read_json(path):
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, json.JSONDecodeError) as exc:
+        raise SystemExit(
+            f"ERROR: cannot read valid JSON evidence from {path}: {exc}"
+        )
+
+with open(before_path, encoding="utf-8") as f:
+    before = {line.strip() for line in f if line.strip()}
+
+current_doc = read_json(current_path)
+current = {
+    item.get("metadata", {}).get("name", "")
+    for item in current_doc.get("items", [])
+}
+with open(ready_path, encoding="utf-8") as f:
+    new_ready = {line.strip() for line in f if line.strip()}
+
+doc = read_json(status_path)
+records = doc.get("status", {}).get("experiment", {}).get("containerRecords", [])
+def injected_count(record):
+    try:
+        return int(record.get("injectedCount", 0) or 0)
+    except (TypeError, ValueError):
+        raise SystemExit(
+            "ERROR: malformed injectedCount in PodChaos status evidence."
+        )
+
+injected = [
+    record for record in records
+    if injected_count(record) > 0
+]
+if len(injected) != 1:
+    raise SystemExit(
+        f"ERROR: expected exactly one injected PodChaos target; found {len(injected)}."
+    )
+
+target_id = injected[0].get("id", "")
+target_namespace, sep, target_pod = target_id.partition("/")
+if not sep or target_namespace != namespace or not target_pod:
+    raise SystemExit(f"ERROR: unexpected PodChaos target identity: {target_id!r}")
+
+if target_pod not in before:
+    raise SystemExit(
+        f"ERROR: injected target {target_pod} was not present in the baseline."
+    )
+if target_pod in current:
+    raise SystemExit(
+        f"ERROR: injected target {target_pod} is still present in the current snapshot."
+    )
+
+replacements = sorted(
+    name for name in new_ready
+    if name and name != target_pod and name in current and name not in before
+)
+if not replacements:
+    raise SystemExit(
+        "ERROR: no distinct new Running+Ready pod was verified in the current snapshot."
+    )
+
+print(f"PASS: Chaos Mesh injected target disappeared: {target_id}")
+print(f"PASS: distinct new Running+Ready pod(s): {', '.join(replacements)}")
+
+conditions = {
+    item.get("type"): item.get("status")
+    for item in doc.get("status", {}).get("conditions", [])
+}
+if conditions.get("AllRecovered") != "True":
+    print(
+        "NOTE: Chaos Mesh AllRecovered is not True "
+        f"(observed {conditions.get('AllRecovered', 'not reported')}). "
+        "Do not report this condition as successful; assess Kubernetes "
+        "Deployment recovery separately."
+    )
+PODTARGET
 
 echo "=== 6. Remove the temporary PodChaos resource ==="
 kubectl delete podchaos "$CHAOS_NAME" -n "$NAMESPACE" \
