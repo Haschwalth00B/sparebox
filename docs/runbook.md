@@ -305,10 +305,18 @@ The run completed successfully. Observed results:
 Review `run.log`, `final-observation.json`, `timeline.json`, and the
 `*-timestamps.json` files in the evidence directory for details.
 
-**Measurement caveat:** the fresh-sample recovery checks passed, but the
-historical timeline had incomplete trailing sample coverage for both BGP and
-HTTP-probe series. It does not establish continuous coverage throughout the
-experiment or prove zero user-visible interruption. This test does not establish
+**Historical timeline recheck:** a subsequent read-only query of the same
+window (`2026-10-15T08:25:43Z` to `2026-10-15T08:27:56Z`) was saved separately
+as `/tmp/sparebox-timeline-recheck.json`. It returned 9 distinct BGP sample
+timestamps and 9 HTTP-probe samples, with a maximum observed gap of 15 seconds
+for both series. The report marked both trends adequate under its 30-second
+gap threshold. This is supplemental historical query output, not a replacement
+for the original `timeline.json` or new experiment data.
+
+**Measurement caveat:** the original run's timeline had incomplete trailing
+sample coverage for both BGP and HTTP-probe series; the later recheck improved
+that coverage but cannot establish continuous coverage throughout the experiment
+or prove zero user-visible interruption. This test does not establish
 Kubernetes high availability, exact MTTR, or uninterrupted service under every
 fabric failure.
 
