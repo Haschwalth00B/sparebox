@@ -1,8 +1,17 @@
+import json
+import threading
 import unittest
 from datetime import datetime, timezone
+from http.server import ThreadingHTTPServer
+from unittest.mock import patch
+from urllib.error import HTTPError
+from urllib.parse import parse_qs, urlparse
+from urllib.request import Request, urlopen
 
 from bridge import (
+    Handler,
     RejectedSignal,
+    query_vector,
     validate_alert_payload,
     validate_peer_snapshot,
 )
@@ -157,6 +166,99 @@ class TelemetryValidationTests(unittest.TestCase):
         })
         with self.assertRaises(RejectedSignal):
             validate_peer_snapshot(self.values, timestamps, now=NOW)
+
+
+
+class QueryVectorTests(unittest.TestCase):
+    @patch("bridge.urlopen")
+    def test_queries_use_one_millisecond_latency_offset(self, mock_urlopen):
+        response = mock_urlopen.return_value.__enter__.return_value
+        response.read.return_value = json.dumps({
+            "status": "success",
+            "data": {"resultType": "vector", "result": []},
+        }).encode()
+
+        peer_query = r'frr_bgp_peer_up{peer=~"10\\.12\\.0\\.[12]"}'
+        timestamp_query = f"timestamp({peer_query})"
+
+        query_vector(peer_query)
+        query_vector(timestamp_query)
+
+        self.assertEqual(mock_urlopen.call_count, 2)
+        for call in mock_urlopen.call_args_list:
+            params = parse_qs(urlparse(call.args[0]).query)
+            self.assertEqual(params["latency_offset"], ["1ms"])
+
+        self.assertEqual(
+            parse_qs(urlparse(mock_urlopen.call_args_list[0].args[0]).query)["query"],
+            [peer_query],
+        )
+        self.assertEqual(
+            parse_qs(urlparse(mock_urlopen.call_args_list[1].args[0]).query)["query"],
+            [timestamp_query],
+        )
+
+
+class HandlerTests(unittest.TestCase):
+    def setUp(self):
+        self.server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self.thread = threading.Thread(
+            target=self.server.serve_forever, daemon=True
+        )
+        self.thread.start()
+        self.url = f"http://127.0.0.1:{self.server.server_port}/alerts"
+
+    def tearDown(self):
+        self.server.shutdown()
+        self.server.server_close()
+        self.thread.join(timeout=2)
+
+    def post_alert(self):
+        request = Request(
+            self.url,
+            data=json.dumps(alert_payload()).encode(),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with urlopen(request, timeout=2) as response:
+                return response.status, json.loads(response.read())
+        except HTTPError as response:
+            return response.code, json.loads(response.read())
+
+    @patch(
+        "bridge.read_link12_telemetry",
+        return_value={
+            "peer_count": 2,
+            "down_peers": ["10.12.0.1"],
+            "max_sample_age_seconds": 10.0,
+        },
+    )
+    def test_handler_accepts_verified_signal_without_recovery(
+        self, mock_telemetry
+    ):
+        status, body = self.post_alert()
+
+        self.assertEqual(status, 202)
+        self.assertTrue(body["accepted"])
+        self.assertEqual(body["mode"], "observe-only")
+        self.assertFalse(body["recovery_executed"])
+        self.assertEqual(body["telemetry"]["down_peers"], ["10.12.0.1"])
+        mock_telemetry.assert_called_once_with()
+
+    @patch(
+        "bridge.read_link12_telemetry",
+        side_effect=RuntimeError("simulated telemetry outage"),
+    )
+    def test_handler_fails_closed_when_telemetry_is_unavailable(
+        self, mock_telemetry
+    ):
+        status, body = self.post_alert()
+
+        self.assertEqual(status, 503)
+        self.assertFalse(body["accepted"])
+        self.assertEqual(body["reason"], "verification unavailable")
+        mock_telemetry.assert_called_once_with()
 
 
 if __name__ == "__main__":

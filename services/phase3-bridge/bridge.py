@@ -135,7 +135,7 @@ def validate_peer_snapshot(value_results, timestamp_results, now=None,
 
 
 def query_vector(query):
-    url = f"{VM_URL}/api/v1/query?{urlencode({'query': query})}"
+    url = f"{VM_URL}/api/v1/query?{urlencode({'query': query, 'latency_offset': '1ms'})}"
     with urlopen(url, timeout=3) as response:
         body = json.loads(response.read())
 
