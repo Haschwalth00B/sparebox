@@ -13,6 +13,8 @@ VM_URL="${VM_URL:-http://127.0.0.1:8428}"
 NAMESPACE="${NAMESPACE:-gitops-test}"
 DEPLOYMENT="${DEPLOYMENT:-sparebox-web}"
 export KUBECONFIG="${KUBECONFIG:-/etc/rancher/k3s/k3s.yaml}"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+export PYTHONPATH="${SCRIPT_DIR}${PYTHONPATH:+:${PYTHONPATH}}"
 
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 OUT="${3:-/tmp/sparebox-phase3-timeline-${STAMP}.json}"
@@ -150,74 +152,19 @@ probe_samples = [
     if start_epoch <= sample["sample_timestamp"] <= end_epoch
 ]
 
-# Data-quality checks are warnings, not claims that the service failed.
-# The current Telegraf/blackbox collection cadence is approximately 15s.
+# Data-quality checks describe sample coverage, not continuous availability.
+from timeline_quality import build_quality_report
+
 MAX_SAMPLE_GAP_SECONDS = 30
-window_seconds = end_epoch - start_epoch
-data_quality = {"warnings": [], "checks": {}}
-
-for name, samples in (
-    ("fabric", bgp_samples),
-    ("application_probe", probe_samples),
-):
-    timestamps = sorted({s["sample_timestamp"] for s in samples})
-    gaps = [
-        timestamps[i] - timestamps[i - 1]
-        for i in range(1, len(timestamps))
-    ]
-    warnings = []
-
-    leading_gap = timestamps[0] - start_epoch if timestamps else None
-    trailing_gap = end_epoch - timestamps[-1] if timestamps else None
-    max_internal_gap = max(gaps) if gaps else None
-
-    if not samples:
-        warnings.append("No samples found in the requested window.")
-    elif len(timestamps) < 2:
-        warnings.append(
-            "Fewer than two distinct sample timestamps; trend is unverified."
-        )
-
-    if max_internal_gap is not None and max_internal_gap > MAX_SAMPLE_GAP_SECONDS:
-        warnings.append(
-            f"Internal sampling gap of {max_internal_gap:.1f}s exceeds "
-            f"{MAX_SAMPLE_GAP_SECONDS}s."
-        )
-
-    if leading_gap is not None and leading_gap > MAX_SAMPLE_GAP_SECONDS:
-        warnings.append(
-            f"First sample is {leading_gap:.1f}s after the window starts; "
-            "leading coverage is incomplete."
-        )
-
-    if trailing_gap is not None and trailing_gap > MAX_SAMPLE_GAP_SECONDS:
-        warnings.append(
-            f"Last sample is {trailing_gap:.1f}s before the window ends; "
-            "trailing coverage is incomplete."
-        )
-
-    data_quality["checks"][name] = {
-        "sample_count": len(samples),
-        "distinct_sample_timestamps": len(timestamps),
-        "max_observed_gap_seconds": max_internal_gap,
-        "leading_uncovered_seconds": leading_gap,
-        "trailing_uncovered_seconds": trailing_gap,
-        "maximum_expected_gap_seconds": MAX_SAMPLE_GAP_SECONDS,
-        "minimum_samples_for_trend": 2,
-        "adequate_for_trend": (
-            len(timestamps) >= 2
-            and not warnings
-        ),
-        "warnings": warnings,
-    }
-    data_quality["warnings"].extend(
-        f"{name}: {warning}" for warning in warnings
-    )
-
-if window_seconds < 30:
-    data_quality["warnings"].append(
-        "Requested window is shorter than 30s; interpret trends cautiously."
-    )
+data_quality = build_quality_report(
+    {
+        "fabric": bgp_samples,
+        "application_probe": probe_samples,
+    },
+    start_epoch,
+    end_epoch,
+    max_gap_seconds=MAX_SAMPLE_GAP_SECONDS,
+)
 
 def transitions(samples, state_key):
     by_series = {}

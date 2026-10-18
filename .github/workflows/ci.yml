@@ -27,6 +27,12 @@ jobs:
             -s services/phase3-bridge \
             -p 'test_*.py' -v
 
+      - name: Test historical timeline quality checks
+        run: |
+          python3 -m unittest discover \
+            -s containerlab/chaos \
+            -p 'test_*.py' -v
+
       - name: Install Nix
         uses: cachix/install-nix-action@v31
         with:
