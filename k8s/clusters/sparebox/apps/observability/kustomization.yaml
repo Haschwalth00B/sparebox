@@ -7,3 +7,4 @@ resources:
   - blackbox-exporter
   - vmalert
   - alertmanager
+  - phase3-bridge
