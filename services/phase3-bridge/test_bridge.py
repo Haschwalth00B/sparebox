@@ -226,6 +226,71 @@ class HandlerTests(unittest.TestCase):
         except HTTPError as response:
             return response.code, json.loads(response.read())
 
+    def post_payload(self, body, headers=None):
+        request = Request(
+            self.url,
+            data=body,
+            headers=headers or {"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with urlopen(request, timeout=2) as response:
+                return response.status, json.loads(response.read())
+        except HTTPError as response:
+            return response.code, json.loads(response.read())
+
+    def test_rejects_invalid_content_length(self):
+        status, body = self.post_payload(
+            b"{}",
+            {"Content-Type": "application/json", "Content-Length": "abc"},
+        )
+        self.assertEqual(status, 400)
+        self.assertEqual(body["reason"], "invalid Content-Length")
+
+    def test_rejects_invalid_json(self):
+        status, body = self.post_payload(b"{invalid")
+        self.assertEqual(status, 400)
+        self.assertEqual(body["reason"], "invalid JSON payload")
+
+    def test_rejects_non_object_json(self):
+        for payload in (b"[]", b"null", b'"alert"'):
+            with self.subTest(payload=payload):
+                status, body = self.post_payload(payload)
+                self.assertEqual(status, 400)
+                self.assertEqual(body["reason"], "JSON payload must be an object")
+
+    def test_rejects_oversized_body(self):
+        from io import BytesIO
+        from unittest.mock import Mock
+
+        handler = Handler.__new__(Handler)
+        handler.path = "/alerts"
+        handler.headers = {"Content-Length": "1048577"}
+        handler.rfile = Mock()
+        handler.wfile = BytesIO()
+        handler.request_version = "HTTP/1.1"
+        handler.command = "POST"
+        handler.requestline = "POST /alerts HTTP/1.1"
+        handler.client_address = ("127.0.0.1", 12345)
+        handler.server = self.server
+        handler.send_response = Mock()
+        handler.send_header = Mock()
+        handler.end_headers = Mock()
+        handler.respond = lambda status, body: (
+            handler.send_response(status),
+            handler.send_header("Content-Type", "application/json"),
+            handler.send_header("Content-Length", str(len(json.dumps(body).encode()))),
+            handler.end_headers(),
+            handler.wfile.write(json.dumps(body).encode()),
+        )
+
+        Handler.do_POST(handler)
+
+        handler.send_response.assert_called_once_with(400)
+        handler.rfile.read.assert_not_called()
+        body = json.loads(handler.wfile.getvalue())
+        self.assertEqual(body["reason"], "invalid request size")
+
     @patch(
         "bridge.read_link12_telemetry",
         return_value={

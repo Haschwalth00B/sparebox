@@ -186,14 +186,27 @@ class Handler(BaseHTTPRequestHandler):
             self.respond(404, {"error": "not found"})
             return
 
+        raw_length = self.headers.get("Content-Length")
+        if raw_length is None or not raw_length.isascii() or not raw_length.isdecimal():
+            self.respond(400, {"accepted": False, "reason": "invalid Content-Length"})
+            return
+
         try:
-            length = int(self.headers.get("Content-Length", "0"))
-            if length <= 0 or length > 1024 * 1024:
-                raise RejectedSignal("invalid request size")
+            length = int(raw_length)
+        except ValueError:
+            self.respond(400, {"accepted": False, "reason": "invalid Content-Length"})
+            return
+        if length <= 0 or length > 1024 * 1024:
+            self.respond(400, {"accepted": False, "reason": "invalid request size"})
+            return
+
+        try:
             try:
                 payload = json.loads(self.rfile.read(length))
             except (json.JSONDecodeError, UnicodeDecodeError) as exc:
                 raise RejectedSignal("invalid JSON payload") from exc
+            if not isinstance(payload, dict):
+                raise RejectedSignal("JSON payload must be an object")
             alert = validate_alert_payload(payload)
             telemetry = read_link12_telemetry()
 
