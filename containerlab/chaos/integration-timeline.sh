@@ -156,10 +156,25 @@ probe_samples = [
 from timeline_quality import build_quality_report
 
 MAX_SAMPLE_GAP_SECONDS = 30
+EXPECTED_LINK12_SERIES = {
+    ("r1-2", "10.12.0.2"),
+    ("r2-1", "10.12.0.1"),
+}
+link12_series_samples = {
+    f"bgp_peer_{router}_{peer}": [
+        sample for sample in bgp_samples
+        if (
+            sample.get("labels", {}).get("router"),
+            sample.get("labels", {}).get("peer"),
+        ) == (router, peer)
+    ]
+    for router, peer in EXPECTED_LINK12_SERIES
+}
 data_quality = build_quality_report(
     {
         "fabric": bgp_samples,
         "application_probe": probe_samples,
+        **link12_series_samples,
     },
     start_epoch,
     end_epoch,

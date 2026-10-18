@@ -70,6 +70,42 @@ class TimelineQualityTests(unittest.TestCase):
         report = self.assess(samples(100, 130, 160))
         self.assertTrue(report["checks"]["fabric"]["adequate_for_trend"])
 
+    def test_each_peer_is_assessed_independently(self):
+        report = build_quality_report(
+            {
+                "fabric": samples(100, 115, 130, 145, 160),
+                "bgp_peer_a": samples(100, 115, 130, 145, 160),
+                "bgp_peer_b": samples(100, 115, 155, 160),
+            },
+            100,
+            160,
+        )
+
+        self.assertTrue(report["checks"]["fabric"]["adequate_for_trend"])
+        self.assertFalse(
+            report["checks"]["bgp_peer_b"]["adequate_for_trend"]
+        )
+        self.assertEqual(
+            report["checks"]["bgp_peer_b"]["max_observed_gap_seconds"], 40
+        )
+
+    def test_expected_series_with_no_samples_is_reported(self):
+        report = build_quality_report(
+            {
+                "fabric": samples(100, 115, 130, 145, 160),
+                "bgp_peer_r2-1_10.12.0.1": [],
+            },
+            100,
+            160,
+        )
+
+        check = report["checks"]["bgp_peer_r2-1_10.12.0.1"]
+        self.assertFalse(check["adequate_for_trend"])
+        self.assertEqual(check["sample_count"], 0)
+        self.assertTrue(
+            any("No samples" in warning for warning in check["warnings"])
+        )
+
     def test_short_window_warns_without_changing_series_assessment(self):
         report = build_quality_report(
             {"fabric": samples(100, 110)},
