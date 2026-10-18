@@ -7,7 +7,9 @@ failure behaviour rather than asserted failure behaviour.
 
 Phase 1 (network fabric) is complete and reproducible from a cold deploy.
 Phase 2 (Kubernetes platform, observability, and chaos validation) is delivered.
-Phase 3 cross-layer integration has been demonstrated with a scripted fabric-failure and Kubernetes recovery experiment. An initial unified recovery dashboard brings live BGP peer health, Kubernetes replica counts, and HTTP probe health into one view. Broader fabric telemetry and richer recovery analysis remain future work.
+Phase 3 cross-layer integration has been demonstrated with a scripted fabric-failure and Kubernetes recovery experiment. The separate Alertmanager bridge validates fresh BGP telemetry for the `SpareboxLink12Degraded` alert in observe-only mode; it does not trigger recovery. The initial ten-panel Grafana recovery dashboard combines BGP peer health, Kubernetes replica counts, HTTP probe health and latency, and interpretation notes. Broader fabric telemetry and richer historical recovery analysis remain future work.
+
+The recorded integration run detected fresh BGP-down telemetry before the scripted Kubernetes pod-failure test, then verified pod replacement, fabric convergence, and final health checks. This is bounded test evidence, not proof of autonomous recovery, high availability, exact MTTR, or uninterrupted service. See [`docs/runbook.md`](docs/runbook.md) for the procedure, evidence location, and measurement caveats.
 
 ---
 
