@@ -18,3 +18,18 @@ data:
             annotations:
               summary: "sparebox-web is down"
               description: "The sparebox-web SLO probe has reported the service as unavailable for more than 1 minute."
+
+      - name: sparebox-network
+        interval: 15s
+        rules:
+          - alert: SpareboxLink12Degraded
+            expr: count(frr_bgp_peer_up{peer=~"10\\.12\\.0\\.[12]"} == 0) >= 1
+            for: 30s
+            labels:
+              severity: warning
+              service: sparebox-web
+              link: link12
+              automation: phase3-recovery
+            annotations:
+              summary: "Sparebox link12 BGP peer failure"
+              description: "At least one monitored link12 BGP peer has reported down for 30 seconds. Verify fresh telemetry and recovery safety conditions before taking any Kubernetes action."
