@@ -33,3 +33,26 @@ data:
             annotations:
               summary: "Sparebox link12 BGP peer failure"
               description: "At least one monitored link12 BGP peer has reported down for 30 seconds. Verify fresh telemetry and recovery safety conditions before taking any Kubernetes action."
+
+      - name: sparebox-ospf
+        interval: 15s
+        rules:
+          - alert: SpareboxOspfNeighborDown
+            expr: frr_ospf_neighbor_up == 0
+            for: 30s
+            labels:
+              severity: warning
+              service: sparebox-network
+            annotations:
+              summary: "OSPF neighbor down on {{ $labels.router }}"
+              description: "Expected OSPF neighbor {{ $labels.neighbor }} on {{ $labels.router }} ({{ $labels.interface }}) has reported down for 30 seconds."
+
+          - alert: SpareboxOspfCollectorFailed
+            expr: frr_ospf_collector_success == 0
+            for: 30s
+            labels:
+              severity: warning
+              service: sparebox-network
+            annotations:
+              summary: "OSPF metrics collector failed on {{ $labels.router }}"
+              description: "The OSPF neighbor collector on {{ $labels.router }} has reported a collection failure for 30 seconds."
