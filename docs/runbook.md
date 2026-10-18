@@ -264,6 +264,50 @@ A Containerlab deploy on this NixOS host may report an inability to locate `/lib
 
 Containerlab may also report `/etc/hosts: read-only file system` while operating on generated containers. Again, verify the actual deployment state rather than treating the warning by itself as proof of a broken lab.
 
+## Phase 3 observability and integration evidence
+
+### Check the observe-only bridge
+
+The Phase 3 bridge validates and observes the designated
+`SpareboxLink12Degraded` alert. It does not execute recovery actions.
+
+Run `curl -fsS http://127.0.0.1:8080/healthz` and
+`curl -fsS http://127.0.0.1:8080/readyz`.
+Both endpoints should return an OK status in observe-only mode.
+
+### Inspect OSPF telemetry and alert rules
+
+Query host-side VictoriaMetrics at `http://127.0.0.1:8428/api/v1/query`
+for `frr_ospf_neighbor_up` and `frr_ospf_collector_success`.
+The current OSPF alert expressions detect explicit zero values;
+missing or stale series require separate inspection.
+
+Inspect loaded rules at `http://127.0.0.1:8880/api/v1/rules`.
+The configured alerts include `SpareboxWebDown`,
+`SpareboxLink12Degraded`, `SpareboxOspfNeighborDown`, and
+`SpareboxOspfCollectorFailed`.
+
+### Historical link12 failure and workload-recovery experiment
+
+A recorded manual experiment injected a link12 fault, observed fresh
+BGP-down telemetry, and performed a controlled Kubernetes pod-kill test.
+The replacement pod became Ready, the Deployment returned to 2/2 replicas,
+and the fabric subsequently converged.
+
+This was manually orchestrated, not autonomous recovery by the Alertmanager
+bridge. The recorded Chaos Mesh status reported `AllRecovered=False`;
+workload recovery was verified separately through pod and Deployment checks.
+
+The evidence window had approximately 41 seconds of trailing uncovered
+time for BGP and 41.6 seconds for the application probe. It does not establish
+continuous availability, zero interruption, or robust end-to-end MTTR.
+
+Artifacts were stored under
+`/tmp/sparebox-phase3-run-20261015T082530Z/` on the test host.
+They are ephemeral and are not version-controlled evidence.
+The historical `integration-check.sh` and `integration-run.sh` scripts
+are absent from the current checkout and must not be documented as reusable.
+
 ## Phase 1 stopping point
 
 Phase 1 is complete. The stable foundation is:
@@ -276,4 +320,4 @@ Phase 1 is complete. The stable foundation is:
 - BGP telemetry through Telegraf/VictoriaMetrics/Grafana;
 - scripted chaos and formal failover evidence.
 
-Full red/blue Inter-AS Option B and broader observability remain separate follow-on work and must not be mistaken for Phase 1 deliverables.
+Full red/blue Inter-AS Option B and comprehensive observability remain separate follow-on work and must not be mistaken for Phase 1 deliverables.

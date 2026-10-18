@@ -159,8 +159,8 @@ The k3s configuration sets `systemReserved`, `kubeReserved`, and a memory evicti
 | Blackbox Exporter | HTTP availability and latency probes |
 | VictoriaMetrics | Host-side metrics storage, with configured retention |
 | Grafana | Host-side dashboards for topology, Kubernetes/GitOps, and SLOs |
-| vmalert | Evaluates the `SpareboxWebDown` alert rule |
-| Alertmanager | Routes firing and resolved alerts to the configured Discord webhook |
+| vmalert | Evaluates `SpareboxWebDown`, `SpareboxLink12Degraded`, `SpareboxOspfNeighborDown`, and `SpareboxOspfCollectorFailed` |
+| Alertmanager | Routes alerts to Discord; additionally forwards `SpareboxLink12Degraded` to the observe-only Phase 3 bridge |
 | Chaos Mesh | Controlled workload fault-injection experiments |
 
 VictoriaMetrics and Grafana remain host services; the cluster scraper sends metrics to the host-side metrics endpoint. This avoids maintaining a second in-cluster metrics database and Grafana instance.
@@ -178,10 +178,10 @@ Chaos Mesh experiment and schedule resources were removed after testing. Schedul
 ### 5.6 Known limitations and deferred work
 
 - **Single-node platform:** there is no Kubernetes HA control plane or redundant host.
-- **Phase 3 integration:** fabric regional failures are not yet connected to Kubernetes pod-rescheduling behaviour.
-- **Unified telemetry:** the existing dashboards cover their respective areas, but a combined fabric/BGP and Kubernetes view remains future work.
-- **Fabric telemetry:** the existing collector does not provide comprehensive OSPF, LDP, interface-counter, or IPsec metrics.
+- **Phase 3 integration:** a historical, manually orchestrated link12 failure experiment observed fresh BGP-down telemetry before a controlled Kubernetes pod-kill test. The workload and fabric subsequently recovered. This does not demonstrate autonomous recovery, high availability, or uninterrupted service.
+- **Unified telemetry:** the topology dashboard covers BGP and OSPF; Kubernetes/GitOps and SLO dashboards remain separate. A combined fabric/Kubernetes view remains future work.
+- **Fabric telemetry:** BGP peer state and OSPF neighbor/collector health are monitored. Comprehensive LDP, interface-counter, and IPsec metrics remain deferred.
 - **Fabric protocol scope:** the full red/blue Inter-AS Option B design and fabric-wide LDP remain deferred as described in ADR 0001.
 - **SLO evidence:** SLO definitions and alerting exist, but exact MTTR, per-experiment error-budget consumption, and continuous impact during all experiments remain unmeasured.
 
-Phase 2 is considered delivered with these limitations explicitly recorded. Phase 3 will focus on connecting the network-fabric failure signals to Kubernetes recovery and presenting the integrated system in a unified dashboard.
+Phase 2 is considered delivered with these limitations explicitly recorded. Phase 3 adds OSPF telemetry and alerts, an observe-only Alertmanager bridge, and a BGP/OSPF topology dashboard. The historical integration experiment documents a manually orchestrated test, not autonomous remediation. A unified fabric/Kubernetes dashboard, broader telemetry, and stronger end-to-end availability measurements remain follow-on work.
