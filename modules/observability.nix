@@ -33,6 +33,13 @@
           timeout = "10s";
           data_format = "influx";
         }
+        {
+          commands = [
+            "/etc/sparebox/scripts/collect-ospf-neighbors.sh"
+          ];
+          timeout = "10s";
+          data_format = "influx";
+        }
       ];
     };
   };
@@ -100,6 +107,11 @@
 
   environment.etc."sparebox/scripts/collect-bgp-summary.sh" = {
     source = ../containerlab/scripts/metrics/collect-bgp-summary.sh;
+    mode = "0755";
+  };
+
+  environment.etc."sparebox/scripts/collect-ospf-neighbors.sh" = {
+    source = ../containerlab/scripts/metrics/collect-ospf-neighbors.sh;
     mode = "0755";
   };
 
