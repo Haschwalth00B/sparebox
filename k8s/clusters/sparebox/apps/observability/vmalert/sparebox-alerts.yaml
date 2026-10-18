@@ -1,0 +1,51 @@
+groups:
+  - name: sparebox-web
+    interval: 15s
+    rules:
+      - alert: SpareboxWebDown
+        expr: probe_success{job="sparebox-web"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: sparebox-web
+        annotations:
+          summary: "sparebox-web is down"
+          description: "The sparebox-web SLO probe has reported the service as unavailable for more than 1 minute."
+
+  - name: sparebox-network
+    interval: 15s
+    rules:
+      - alert: SpareboxLink12Degraded
+        expr: count(frr_bgp_peer_up{peer=~"10\\.12\\.0\\.[12]"} == 0) >= 1
+        for: 30s
+        labels:
+          severity: warning
+          service: sparebox-web
+          link: link12
+          automation: phase3-recovery
+        annotations:
+          summary: "Sparebox link12 BGP peer failure"
+          description: "At least one monitored link12 BGP peer has reported down for 30 seconds. Verify fresh telemetry and recovery safety conditions before taking any Kubernetes action."
+
+  - name: sparebox-ospf
+    interval: 15s
+    rules:
+      - alert: SpareboxOspfNeighborDown
+        expr: frr_ospf_neighbor_up == 0
+        for: 30s
+        labels:
+          severity: warning
+          service: sparebox-network
+        annotations:
+          summary: "OSPF neighbor down on {{ $labels.router }}"
+          description: "Expected OSPF neighbor {{ $labels.neighbor }} on {{ $labels.router }} ({{ $labels.interface }}) has reported down for 30 seconds."
+
+      - alert: SpareboxOspfCollectorFailed
+        expr: frr_ospf_collector_success == 0
+        for: 30s
+        labels:
+          severity: warning
+          service: sparebox-network
+        annotations:
+          summary: "OSPF metrics collector failed on {{ $labels.router }}"
+          description: "The OSPF neighbor collector on {{ $labels.router }} has reported a collection failure for 30 seconds."
