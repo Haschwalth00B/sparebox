@@ -1,8 +1,12 @@
+import json
 import unittest
 from datetime import datetime, timezone
+from unittest.mock import patch
+from urllib.parse import parse_qs, urlparse
 
 from bridge import (
     RejectedSignal,
+    query_vector,
     validate_alert_payload,
     validate_peer_snapshot,
 )
@@ -157,6 +161,37 @@ class TelemetryValidationTests(unittest.TestCase):
         })
         with self.assertRaises(RejectedSignal):
             validate_peer_snapshot(self.values, timestamps, now=NOW)
+
+
+
+class QueryVectorTests(unittest.TestCase):
+    @patch("bridge.urlopen")
+    def test_queries_use_one_millisecond_latency_offset(self, mock_urlopen):
+        response = mock_urlopen.return_value.__enter__.return_value
+        response.read.return_value = json.dumps({
+            "status": "success",
+            "data": {"resultType": "vector", "result": []},
+        }).encode()
+
+        peer_query = r'frr_bgp_peer_up{peer=~"10\\.12\\.0\\.[12]"}'
+        timestamp_query = f"timestamp({peer_query})"
+
+        query_vector(peer_query)
+        query_vector(timestamp_query)
+
+        self.assertEqual(mock_urlopen.call_count, 2)
+        for call in mock_urlopen.call_args_list:
+            params = parse_qs(urlparse(call.args[0]).query)
+            self.assertEqual(params["latency_offset"], ["1ms"])
+
+        self.assertEqual(
+            parse_qs(urlparse(mock_urlopen.call_args_list[0].args[0]).query)["query"],
+            [peer_query],
+        )
+        self.assertEqual(
+            parse_qs(urlparse(mock_urlopen.call_args_list[1].args[0]).query)["query"],
+            [timestamp_query],
+        )
 
 
 if __name__ == "__main__":
