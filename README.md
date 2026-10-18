@@ -6,7 +6,7 @@ k3s platform — with one `flake.nix` as the source of truth for both, and measu
 failure behaviour rather than asserted failure behaviour.
 
 Phase 1 (network fabric) is complete and reproducible from a cold deploy.
-Phase 2 (Kubernetes platform, observability, and chaos validation) is delivered. Phase 3 will integrate fabric failures with Kubernetes recovery.
+Phase 2 (Kubernetes platform, observability, and chaos validation) is delivered. Phase 3 adds OSPF telemetry and alerts, an observe-only Alertmanager bridge, and a BGP/OSPF topology dashboard. A historical, manually orchestrated fabric-failure and workload-recovery experiment was recorded; autonomous recovery is not implemented.
 
 ---
 
@@ -149,8 +149,8 @@ Stated explicitly because the difference matters in review:
 - **Not** a fabric-wide LDP domain. LDP is scoped to the r1 pair on purpose.
 - **Not** full data-plane encryption. IPsec is transport mode on the three primary
   inter-region transit links.
-- **Not** full fabric telemetry. The shipped collector is BGP peer state only —
-  no OSPF, LDP, interface-counter or IPsec metrics yet.
+- **Not** full fabric telemetry. BGP peer state and OSPF neighbor/collector health
+  are monitored; comprehensive LDP, interface-counter and IPsec metrics remain deferred.
 - **Not** highly available. One box, one node, no failover partner. The recovery
   story is NixOS generation rollback, not redundancy.
 
