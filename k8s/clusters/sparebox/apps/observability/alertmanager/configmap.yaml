@@ -22,6 +22,10 @@ data:
             - alertname="SpareboxLink12Degraded"
           continue: true
 
+        - receiver: default
+          matchers:
+            - alertname=~".+"
+
     receivers:
       - name: default
         discord_configs:
