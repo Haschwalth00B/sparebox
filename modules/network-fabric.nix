@@ -1,5 +1,21 @@
 { pkgs, ... }:
 
+let
+  fabricRecoveryFiles = pkgs.runCommand "sparebox-fabric-recovery-files" {} ''
+    mkdir -p "$out/containerlab/scripts"
+    mkdir -p "$out/containerlab/chaos"
+    mkdir -p "$out/containerlab/strongswan"
+    cp ${../containerlab/recovery-data-links.tsv} "$out/containerlab/recovery-data-links.tsv"
+
+    cp ${../containerlab/scripts/boot-recover.sh} "$out/containerlab/scripts/boot-recover.sh"
+    cp ${../containerlab/scripts/restore-data-links.sh} "$out/containerlab/scripts/restore-data-links.sh"
+    cp ${../containerlab/scripts/setup-cust-a.sh} "$out/containerlab/scripts/setup-cust-a.sh"
+    cp ${../containerlab/chaos/inject.sh} "$out/containerlab/chaos/inject.sh"
+
+    ${pkgs.coreutils}/bin/mkdir -p "$out/containerlab/strongswan"
+    ${pkgs.coreutils}/bin/cp -r ${../containerlab/strongswan}/. "$out/containerlab/strongswan/"
+  '';
+in
 {
   # FRR and strongSwan run inside Containerlab-managed containers.
   virtualisation.docker.enable = true;
@@ -22,6 +38,7 @@
       docker
       containerlab
       iproute2
+      util-linux
       gnugrep
       gawk
       jq
@@ -36,7 +53,7 @@
 
     script = ''
       exec ${pkgs.bash}/bin/bash \
-        /root/sparebox/containerlab/scripts/boot-recover.sh
+        ${fabricRecoveryFiles}/containerlab/scripts/boot-recover.sh
     '';
   };
 }

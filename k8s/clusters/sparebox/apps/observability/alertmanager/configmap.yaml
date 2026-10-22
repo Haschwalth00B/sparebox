@@ -20,7 +20,6 @@ data:
         - receiver: phase3-bridge
           matchers:
             - alertname="SpareboxLink12Degraded"
-          continue: true
         - receiver: default
           matchers:
             - alertname=~".+"

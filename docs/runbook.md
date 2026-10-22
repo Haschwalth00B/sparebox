@@ -266,10 +266,10 @@ Containerlab may also report `/etc/hosts: read-only file system` while operating
 
 ## Phase 3 fabric-failure and Kubernetes-recovery integration
 
-The integration runner exercises a controlled inter-region link failure and
-checks whether fresh BGP telemetry detects the failure before a Kubernetes
-workload fault is introduced. It then verifies workload recovery, fabric
-convergence, and final health signals.
+The integration runner coordinates a controlled inter-region link failure
+and a separate Kubernetes workload fault. It records telemetry, pod replacement,
+fabric convergence, and final health signals. These are test-runner-coordinated
+actions: the Phase 3 bridge remains observe-only and does not initiate recovery.
 
 Run from the repository root on `sparebox`:
 
@@ -281,6 +281,48 @@ Run from the repository root on `sparebox`:
 `PodChaos` pod-kill experiment against `gitops-test/sparebox-web`. Run it only
 when a brief test-workload disturbance is acceptable. Review the script before
 execution and avoid running it when uninterrupted availability is required.
+
+### Recorded integration run — 2026-10-21
+
+Evidence directory:
+
+    /tmp/sparebox-phase3-run-20261021T080636Z/
+
+The recorded run completed its final health checks successfully. The experiment
+window was `2026-10-21T08:06:49Z` to `2026-10-21T08:08:56Z`. Observed results:
+
+- Baseline was healthy: all 18 BGP peer series were up, the application HTTP
+  probe passed, and `gitops-test/sparebox-web` had 2/2 available replicas.
+- Fresh telemetry recorded both link12 BGP peer series down at
+  `08:07:00Z`, then up at `08:08:30Z`.
+- The test runner separately applied a Chaos Mesh `PodChaos` fault. The targeted
+  pod disappeared and a distinct replacement reached `Running` and `Ready`.
+- The `PodChaos` status reported `AllInjected=True` and `AllRecovered=False`.
+  Do not describe the Chaos Mesh recovery condition itself as successful.
+  The temporary `PodChaos` resource was deleted, and the Kubernetes Deployment
+  subsequently reported a successful rollout with 2/2 replicas ready and available.
+- Fabric convergence was reported after 6 seconds. The run then verified all
+  18 BGP peers were up with fresh samples and the application probe had a newer
+  successful sample.
+- The final read-only observation reported 18/18 peers up, a passing application
+  probe, 2/2 Deployment replicas, pod readiness passing, and overall health
+  `HEALTHY`. The runner's safety-cleanup exit status was 0.
+
+The historical timeline contained 16 BGP samples across 8 distinct timestamps
+and 8 application-probe samples. The maximum observed gap was 15 seconds;
+leading and trailing uncovered intervals were approximately 10–12 seconds.
+These samples support a trend assessment, not proof of continuous availability
+or zero user-visible interruption.
+
+**Scope and limitation:** the test runner coordinated the link fault and the
+independent Kubernetes `PodChaos` action. This run does not demonstrate that
+the Phase 3 bridge autonomously triggered Kubernetes recovery. The bridge is
+observe-only; autonomous recovery remains follow-on work. The run also does
+not establish Kubernetes high availability or a universal MTTR guarantee.
+
+Review `run.log`, `baseline.json`, `final-observation.json`, `timeline.json`,
+and the pod/telemetry snapshots in the evidence directory. The evidence is
+stored under `/tmp` on the test host and is not part of the Git repository.
 
 ### Recorded integration run — 2026-10-15
 

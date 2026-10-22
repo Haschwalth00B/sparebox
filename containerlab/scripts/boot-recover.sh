@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-TOPOLOGY="containerlab/topology.clab.yml"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+RECOVERY_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
 ROUTERS=(r1-1 r1-2 r2-1 r2-2 r3-1 r3-2)
 SIDECARS=(
   ipsec-r1-1 ipsec-r1-2
@@ -11,6 +12,9 @@ SIDECARS=(
 
 echo "=== Sparebox fabric boot recovery ==="
 echo "Working directory: $PWD"
+
+echo "=== Restoring missing data links, if necessary ==="
+bash "$RECOVERY_ROOT/containerlab/scripts/restore-data-links.sh"
 
 fabric_is_complete() {
   local node container iface
@@ -39,30 +43,14 @@ fabric_is_complete() {
   return 0
 }
 
-DEPLOY_RC=0
-
-if fabric_is_complete; then
-  echo "Fabric containers and interfaces already exist; skipping redeploy."
-else
-  echo "Fabric is incomplete; attempting Containerlab recovery."
-  DEPLOY_LOG="$(mktemp)"
-  trap 'rm -f "$DEPLOY_LOG"' EXIT
-
-  set +e
-  containerlab deploy \
-    --topo "$TOPOLOGY" \
-    --name sparebox-fabric \
-    --max-workers 1 \
-    --reconfigure \
-    --skip-post-deploy >"$DEPLOY_LOG" 2>&1
-  DEPLOY_RC=$?
-  set -e
-
-  cat "$DEPLOY_LOG"
-  echo "Containerlab deploy exit code: $DEPLOY_RC"
+if ! fabric_is_complete; then
+  echo "ERROR: fabric is incomplete; automatic reconfiguration is disabled." >&2
+  echo "No containers were redeployed. Inspect container and interface state manually." >&2
+  exit 1
 fi
 
-echo
+echo "Fabric containers and data interfaces are present; skipping redeploy."
+
 echo "=== Verifying router containers and interfaces ==="
 for node in "${ROUTERS[@]}"; do
   container="clab-sparebox-fabric-${node}"
@@ -99,17 +87,11 @@ done
 
 echo
 echo "=== Restoring CUST-A VRF and MPLS settings ==="
-bash containerlab/scripts/setup-cust-a.sh
-
-if (( DEPLOY_RC != 0 )); then
-  echo "ERROR: Containerlab reported exit code $DEPLOY_RC." >&2
-  echo "Inspect deployment output above, even if interface checks passed." >&2
-  exit "$DEPLOY_RC"
-fi
+bash "$RECOVERY_ROOT/containerlab/scripts/setup-cust-a.sh"
 
 echo
 echo "=== Waiting for BGP and data-plane convergence ==="
-if ! bash containerlab/chaos/inject.sh wait-converged 180; then
+if ! bash "$RECOVERY_ROOT/containerlab/chaos/inject.sh" wait-converged 180; then
   echo "ERROR: BGP/data-plane convergence failed after 180 seconds." >&2
   exit 1
 fi
@@ -123,7 +105,7 @@ while :; do
   IPSEC_READY=1
 
   for node in "${ROUTERS[@]}"; do
-    config="containerlab/strongswan/${node}/ipsec.conf"
+    config="$RECOVERY_ROOT/containerlab/strongswan/${node}/ipsec.conf"
     container="clab-sparebox-fabric-ipsec-${node}"
 
     if ! status=$(docker exec "$container" /usr/sbin/ipsec statusall 2>/dev/null); then

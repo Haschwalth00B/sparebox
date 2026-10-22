@@ -1,0 +1,9 @@
+r1-1	eth1	aa:c1:ab:ee:09:62	r1-2	eth1	aa:c1:ab:09:65:67
+r2-1	eth1	aa:c1:ab:9e:0d:dd	r2-2	eth1	aa:c1:ab:56:1c:f5
+r3-1	eth1	aa:c1:ab:cd:f5:10	r3-2	eth1	aa:c1:ab:4c:68:4c
+r1-2	eth2	aa:c1:ab:1a:64:9a	r2-1	eth2	aa:c1:ab:33:7a:4f
+r2-2	eth2	aa:c1:ab:f1:14:d1	r3-1	eth2	aa:c1:ab:39:70:33
+r3-2	eth2	aa:c1:ab:48:fe:a5	r1-1	eth2	aa:c1:ab:4d:92:0f
+r1-1	eth3	aa:c1:ab:3b:a2:07	r2-2	eth3	aa:c1:ab:45:01:2a
+r2-1	eth3	aa:c1:ab:e7:53:28	r3-2	eth3	aa:c1:ab:ce:a5:b7
+r3-1	eth3	aa:c1:ab:55:4c:0a	r1-2	eth3	aa:c1:ab:83:a3:c2
