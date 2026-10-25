@@ -131,6 +131,17 @@ if [[ "$header" != *"route_change_s"* ]]; then
   exit 2
 fi
 
+# Keep the source CSV intact, but do not count eth0 or malformed route results
+# as fabric failover. This also protects analysis of the historical Week 6 CSV.
+invalid_route_claims="$(awk -F, '
+  NR > 1 && $9 == 1 &&
+  $8 !~ /^via [0-9]+\.[0-9]+\.[0-9]+\.[0-9]+ dev eth[123]$/ { n++ }
+  END { print n + 0 }
+' "$CSV")"
+if [[ "$invalid_route_claims" -gt 0 ]]; then
+  echo "WARNING: ignoring $invalid_route_claims route-change row(s) with invalid route_after (expected via ... dev eth1/eth2/eth3)." >&2
+fi
+
 # ---------------------------------------------------------------------------
 # Group keys
 # ---------------------------------------------------------------------------
@@ -181,7 +192,8 @@ while IFS='|' read -r scen tgt src dst; do
       $t == kt &&
       $a == ka &&
       $b == kb &&
-      $9 == 1 {
+      $9 == 1 &&
+      $8 ~ /^via [0-9]+\.[0-9]+\.[0-9]+\.[0-9]+ dev eth[123]$/ {
         print $c + 0
       }
     ' "$CSV" |
@@ -329,7 +341,7 @@ while IFS='|' read -r scen tgt src dst; do
     $b == kb {
       total++
 
-      if ($9 == 1)
+      if ($9 == 1 && $8 ~ /^via [0-9]+\.[0-9]+\.[0-9]+\.[0-9]+ dev eth[123]$/)
         route_changes++
 
       if (($11 + 0) > 0)
