@@ -86,7 +86,7 @@ class RouteNormalizerTests(unittest.TestCase):
         self.assertIn("WARNING: ignoring 1 route-change row", result.stderr)
         self.assertIn("path changes: 1/2", result.stdout)
         self.assertIn("route_change_s", result.stdout)
-        self.assertRegex(result.stdout, r"route_change_s\s+1\s+0\.200")
+        self.assertRegex(result.stdout, r"route_change_s\s+1\s+0\.2\s+0\.200")
 
 
 if __name__ == "__main__":
