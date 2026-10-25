@@ -21,6 +21,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Check chaos shell syntax
+        run: |
+          for f in containerlab/chaos/*.sh containerlab/chaos/benchmark/*.sh; do
+            bash -n "$f" || exit 1
+          done
+
+      - name: Test chaos route parser and analyzer
+        run: |
+          python3 -m unittest discover \
+            -s containerlab/chaos \
+            -p 'test_route_parser.py' -v
+
       - name: Test Phase 3 bridge
         run: |
           python3 -m unittest discover \
