@@ -100,15 +100,16 @@ postmortems/                  one per chaos game day (Phase 2)
 All figures come from committed CSVs in `containerlab/chaos/results/` and are
 reproducible with `containerlab/chaos/analyze.sh`.
 
-**Failover convergence — 60 formal link-down trials across all three ring links**
+**Historical link-down benchmark — 60 formal trials across three ring links**
 
-| Metric | p50 | p95 |
-|---|---:|---:|
-| Route-change detection | 54.6 ms | 90.6 ms |
-| Route heal after repair | ~1.30 s | ~1.35 s |
-
-Path change occurred in 60/60 trials, with 0% packet loss in 60/60 — the redundant
-inter-region links absorbed the failure before any ICMP gap was observable.
+An audit of the recorded route observations found that 54 of the 60 link-down
+trials reported `route_after` via `eth0`, the Containerlab management interface.
+Those claims are excluded from valid fabric route-change statistics. Only 6/60
+recorded route claims passed route validation: link12 1/20, link23 3/20, and
+link31 2/20. These counts describe valid recorded claims, not a measured failover
+success rate. The original latency figures are historical results and should not
+be presented as verified fabric convergence percentiles without valid samples.
+The original CSV is retained unchanged.
 
 **Blackhole — 20 formal trials on `link12`**
 

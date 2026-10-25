@@ -343,6 +343,8 @@ while IFS='|' read -r scen tgt src dst; do
 
       if ($9 == 1 && $8 ~ /^via [0-9]+\.[0-9]+\.[0-9]+\.[0-9]+ dev eth[123]$/)
         route_changes++
+      else if ($9 == 1)
+        rejected_route_claims++
 
       if (($11 + 0) > 0)
         loss_trials++
@@ -354,10 +356,11 @@ while IFS='|' read -r scen tgt src dst; do
       if (total == 0)
         exit
 
-      printf "  trials: %d | path changes: %d/%d (%.1f%%) | zero-loss: %d/%d (%.1f%%) | packet-loss trials: %d\n",
+      printf "  trials: %d | path changes: %d/%d (%.1f%%) | rejected route claims: %d | zero-loss: %d/%d (%.1f%%) | packet-loss trials: %d\n",
         total,
         route_changes,total,
         100*route_changes/total,
+        rejected_route_claims,
         zero_loss,total,
         100*zero_loss/total,
         loss_trials

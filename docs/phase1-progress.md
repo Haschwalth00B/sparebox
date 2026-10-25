@@ -308,16 +308,26 @@ Other fault classes were exercised as smoke tests rather than mixed into the for
 
 ### 8.3 Link-down results
 
-| Target | Trials | Route-change p50 | Route-change p95 | Max | Path changes | Zero-loss trials |
-|---|---:|---:|---:|---:|---:|---:|
-| `link12` | 20 | 53 ms | 92 ms | 97.662 ms | 20/20 | 20/20 |
-| `link23` | 20 | 51 ms | 88 ms | 88.817 ms | 20/20 | 20/20 |
-| `link31` | 20 | 56 ms | 91 ms | 95.658 ms | 20/20 | 20/20 |
-| **All link-down** | **60** | **54.6 ms** | **90.6 ms** | **97.662 ms** | **60/60** | **60/60** |
+**Historical result caveat:** the original table's route-change counts and latency
+percentiles were calculated before route validation excluded observations through
+the Containerlab management interface. An audit found 54 of 60 link-down rows
+recorded `route_after` via `eth0`, which is not a valid fabric failover route.
+The analyzer now rejects those claims. The remaining validated route claims are:
 
-Interpretation: the primary-link failures were detected and rerouted in tens of milliseconds, and the probe observed no ICMP packet loss in the formal link-down dataset.
+| Target | Trials | Valid route claims | Rejected route claims |
+|---|---:|---:|---:|
+| `link12` | 20 | 1 | 19 |
+| `link23` | 20 | 3 | 17 |
+| `link31` | 20 | 2 | 18 |
+| **Total** | **60** | **6** | **54** |
 
-These numbers are measurements from this Containerlab/NixOS environment, not a general claim about OSPF/BGP convergence on arbitrary hardware or networks.
+These counts describe the validity of the recorded route claims; they do not
+establish that failover failed in the rejected trials. The original route-change
+percentiles and 60/60 path-change claim are not verified fabric convergence
+results. The historical CSV remains unchanged, and no replacement convergence
+percentiles are claimed here.
+
+The historical measurements were collected in this Containerlab/NixOS environment. Because the audit invalidated most recorded link-down route claims, the original convergence percentiles are not verified results and should not be generalized to other hardware or networks.
 
 ### 8.4 Link-blackhole result
 
@@ -572,7 +582,7 @@ The main handoff principles are:
 | strongSwan/IPsec | Complete | IKEv2/ESP SAs established; transit capture evidence |
 | CUST-A VPNv4/MPLS pilot | Complete | bilateral VRF ping + MPLS route resolution |
 | BGP observability | Complete | Telegraf → VictoriaMetrics → Grafana |
-| Link-down benchmark | Complete | 60 formal trials; p50 54.6 ms, p95 90.6 ms |
+| Link-down benchmark | Historical data audited | 60 formal trials retained; 54 route claims rejected as management-interface observations; valid convergence percentiles not established |
 | Link-blackhole benchmark | Complete | 20 formal trials; p50 loss interval 5.107 s |
 | Tunnel benchmark | Complete | baseline/strongSwan/WireGuard CSV |
 | Cold-redeploy reproducibility | Complete | committed setup script + fresh deploy validation |
