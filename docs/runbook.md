@@ -202,6 +202,14 @@ Formal coverage:
 
 Total: 80 formal rows plus the CSV header.
 
+**Historical measurement caveat:** an audit found 54 of the 60 `link-down` rows
+recorded `route_after` on `eth0`, the Containerlab management interface. Those
+are not valid fabric failover routes. The original CSV and raw logs are retained
+unchanged; the analyzer now warns about and excludes invalid route claims from
+route-change statistics. Corrected runs record the fault/heal timestamps and
+separate raw `ip route get` samples. Write new measurements to a fresh output
+directory rather than appending to an older CSV schema.
+
 Run analysis with:
 
 ```bash
