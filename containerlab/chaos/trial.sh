@@ -5,7 +5,8 @@
 # Safe design:
 #   - never modifies inject.sh, probe.sh, fabric.env, topology or FRR
 #   - never overwrites the old results/trials.csv
-#   - records kernel-route changes as well as packet-loss gaps
+#   - records only validated fabric-interface route changes
+#   - preserves raw route samples and fault-window timestamps for audit
 #   - handles zero-loss failover as a successful HA result
 #
 # A trial:
@@ -191,10 +192,16 @@ mkdir -p "$OUTDIR/raw"
 # This is intentionally a NEW file so the old trials.csv remains untouched.
 # ---------------------------------------------------------------------------
 
+CSV_HEADER='run,scenario,target,probe_src,probe_dst,trial,route_before,route_after,route_change,route_change_s,packet_loss_s,loss_lag_s,heal_route_change_s,ttl_before,ttl_after,samples,interval_s,note,fault_epoch,heal_epoch,route_before_raw,route_log,route_raw_log'
 if [[ ! -f "$CSV" ]]; then
-  cat > "$CSV" <<'CSV_HEADER'
-run,scenario,target,probe_src,probe_dst,trial,route_before,route_after,route_change,route_change_s,packet_loss_s,loss_lag_s,heal_route_change_s,ttl_before,ttl_after,samples,interval_s,note
-CSV_HEADER
+  printf '%s\n' "$CSV_HEADER" > "$CSV"
+else
+  existing_header="$(head -n1 "$CSV")"
+  if [[ "$existing_header" != "$CSV_HEADER" ]]; then
+    echo "trial.sh: existing CSV has an incompatible schema: $CSV" >&2
+    echo "Choose a new --out directory; existing results were not modified." >&2
+    exit 2
+  fi
 fi
 
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
@@ -242,17 +249,6 @@ trap cleanup_on_exit EXIT INT TERM
 # ---------------------------------------------------------------------------
 
 
-route_now() {
-  local container="$CLAB_PREFIX-ipsec-$SRC"
-  local dst_ip="${LOOPBACK[$DST]}"
-
-  docker exec "$container" sh -c \
-    "ip route get '$dst_ip' 2>/dev/null" |
-    sed -n 's/.*via \([^ ]*\).*dev \(eth[123]\).*/via \1 dev \2/p' |
-    head -n1
-}
-
-
 route_raw() {
   local container="$CLAB_PREFIX-ipsec-$SRC"
   local dst_ip="${LOOPBACK[$DST]}"
@@ -260,6 +256,18 @@ route_raw() {
   docker exec "$container" sh -c \
     "ip route get '$dst_ip' 2>/dev/null" |
     head -n1
+}
+
+route_from_raw() {
+  # Only a route through a fabric interface can count as a fabric path.
+  # In particular, Docker's eth0 management/default route is never failover.
+  printf '%s\n' "$1" | awk -f "$HERE/route-normalize.awk"
+}
+
+route_now() {
+  local raw
+  raw="$(route_raw || true)"
+  route_from_raw "$raw"
 }
 
 # ---------------------------------------------------------------------------
@@ -275,12 +283,15 @@ route_raw() {
 
 start_route_monitor() {
   local outfile="$1"
+  local rawfile="$2"
 
   (
     while :; do
       ts="$(now)"
-      r="$(route_now || true)"
+      raw="$(route_raw || true)"
+      printf '%s|%s\n' "$ts" "${raw:-<no-route>}" >> "$rawfile"
 
+      r="$(route_from_raw "$raw" || true)"
       if [[ -n "$r" ]]; then
         printf '%s %s\n' "$ts" "$r"
       fi
@@ -369,6 +380,10 @@ route_metrics() {
       $1=""
       sub(/^ /,"")
       route=$0
+
+      # Reject malformed or non-fabric routes even if a log is unexpected.
+      if (route !~ /^via [0-9]+\.[0-9]+\.[0-9]+\.[0-9]+ dev eth[123]$/)
+        next
 
       if (first_route == "") {
         first_route=route
@@ -491,16 +506,19 @@ for ((i=1; i<=TRIALS; i++)); do
     exit 1
   fi
 
-  route_before="$(route_now || true)"
+  route_before_raw="$(route_raw || true)"
+  route_before="$(route_from_raw "$route_before_raw")"
 
   if [[ -z "$route_before" ]]; then
     echo
-    echo "could not determine route before fault — stopping."
+    echo "could not determine a valid fabric route before fault — stopping."
+    echo "raw route: ${route_before_raw:-<no-route>}" >&2
     exit 1
   fi
 
   raw="$OUTDIR/raw/${STAMP}_${SCEN}_${TARGET}_$(printf '%03d' "$i").txt"
   route_raw_file="$OUTDIR/raw/${STAMP}_${SCEN}_${TARGET}_$(printf '%03d' "$i")_route.txt"
+  route_diag_file="$OUTDIR/raw/${STAMP}_${SCEN}_${TARGET}_$(printf '%03d' "$i")_route-raw.txt"
 
   # Probe only needs to live slightly longer than this trial.
   probe_deadline="$(
@@ -509,7 +527,7 @@ for ((i=1; i<=TRIALS; i++)); do
   )"
 
   PROBE_PID="$(start_probe "$raw" "$probe_deadline")"
-  ROUTE_PID="$(start_route_monitor "$route_raw_file")"
+  ROUTE_PID="$(start_route_monitor "$route_raw_file" "$route_diag_file")"
 
   if ! wait_probe "$raw" 5; then
     echo
@@ -631,7 +649,7 @@ for ((i=1; i<=TRIALS; i++)); do
     loss_status="ZERO-LOSS"
   fi
 
-  printf '%s,%s,%s,%s,%s,%d,%s,%s,%s,%s,%s,%s,%s,%s,%s,%d,%s,%s\n' \
+  printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' \
     "$STAMP" \
     "$SCEN" \
     "$TARGET" \
@@ -649,7 +667,12 @@ for ((i=1; i<=TRIALS; i++)); do
     "$ttl_after" \
     "$samples" \
     "$IV" \
-    "$NOTE" >> "$CSV"
+    "$NOTE" \
+    "$t_fault" \
+    "$t_heal" \
+    "$route_before_raw" \
+    "raw/$(basename "$route_raw_file")" \
+    "raw/$(basename "$route_diag_file")" >> "$CSV"
 
   printf '%s  route=%ss  loss=%ss  heal=%ss  %s/%s\n' \
     "$route_status" \
